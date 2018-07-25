@@ -7,13 +7,13 @@ Using Technical Analysis, there are many buy and sell opportunities happening si
 
 This system is proposed to run on a Python/Django/Postgres stack, hosted on Heroku
 
-### Todo
+### Todo (Tom and Arsèn):
 
-[ ] how are API auth keys created and used
-[ ] more secure way of passing exchange api keys?
-[ ] set requirements for accuracy, dynamic to support small/large portfolios and coins with low volume
-[ ] estimate expected load on the service
-[ ] finalize architecture requirements
+- [ ] how are API auth keys created and used
+- [ ] more secure way of passing exchange api keys?
+- [ ] set requirements for accuracy, dynamic to support small/large portfolios and coins with low volume
+- [ ] estimate expected load on the service
+- [ ] finalize architecture requirements
 
 
 **Currently In Scope**
@@ -63,19 +63,20 @@ In request data, includes json data for Exchange account access (binance only fo
 ```
 RESPONSE 200 OK
 {
-	"binance": {
-		"value": 2.53439324,  # BTC value
-		"allocations": [
+  "binance": {
+    "value": 2.53439324,  # BTC value
+    "allocations": [
       {
         "coin": "ETH",
-			  "amount": 231.12321311  # amount of tokens
+	"amount": 231.12321311  # amount of tokens
         "portion": 0.4999  # floor at 4th decimal place
       },
-			{
+      {
         "coin": "BCH",
-			  "amount": 22.12932881  # amount of tokens
-			  "portion": 0.4999  # floor at 4th decimal place 
+	"amount": 22.12932881  # amount of tokens
+	"portion": 0.4999  # floor at 4th decimal place 
       },
+      ...
     ]
   }
 }
@@ -167,17 +168,11 @@ RESPONSE 202 Accepted
 ```
 
 ```
-RESPONSE 410 Gone
+RESPONSE 410 Gone OR 404 Not Found
 { 
 	"status": "not found or expired"
 }
 ```
-
-## 
-
+processing task not found because it was expired from the cache, client should start over with a new set of requests
 
 
-
-
-``
-portfolio not found, start over
