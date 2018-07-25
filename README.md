@@ -7,28 +7,46 @@ Using Technical Analysis, there are many buy and sell opportunities happening si
 
 This system is proposed to run on a Python/Django/Postgres stack, hosted on Heroku
 
+### Todo
+
+[ ] how are API auth keys created and used
+[ ] more secure way of passing exchange api keys?
+[ ] set requirements for accuracy, dynamic to support small/large portfolios and coins with low volume
+[ ] estimate expected load on the service
+[ ] finalize architecture requirements
+
 
 **Currently In Scope**
 
-1. Check coin balances and for any Binance exchange account given a set of api keys.
+- Check coin balances and for any Binance exchange account given a set of api keys.
 - Represent a Binance exchange account as a portfolio of coins with portion allocations.
 - Calculate difference between current state and desired state of a portfolio allocation.
 - Determine shortest/cheapest path for trading from current state to desired state
 - Make trades by taking market orders
 - Limit slippage using a price difference threshold (1%?)
+- 5 minute expiration on processing orders
+- extra/leftover assets held in BTC
 
 
-**Currently out of Scope**
+**Currently out of Scope, but maybe add later**
 
+- placing orders at high frequency in order to capture prices better than taking market orders
 - Operating on Bittrex, Poloniex, and other exchanges
 - Accounting for amounts held offline when converting allocation % to trades
+- simulation mode, check order book, simulate trades, and return API responses normally
 
-**Never will be in Scope**
+**Will NEVER be in Scope**
 
 - deposit or withdraw coins from any account
+- expose public api endpoints
+- publish data on intended trades *before* placing orders
+- hold exchange api keys in *persistant* storage or database
+- compare or analyze portfolios against each other
 
 
 ## Binance Exchange Get Portfolio State
+
+`/api/portfolio` with data in request body
 
 ```
 GET /api/portfolio
@@ -63,13 +81,16 @@ RESPONSE 200 OK
 }
 ```
 
-ITF price API is available for checking estimated current prices approximate prices of coins
+ITF price API is available for checking estimated current prices of coins
 
 Value is the estimated total value of all assets on binance, denominated in BTC
 
 Sum of all portions should be between 0.9900 and 1.0000
-`allocations_sum = sum([float([a["portion"]) for a in data["binance"]["allocations"]])`
-`assert allocations_sum <= 1 and allocations_sum > 0.99`
+
+```
+allocations_sum = sum([float([a["portion"]) for a in data["binance"]["allocations"]])
+assert allocations_sum <= 1 and allocations_sum > 0.99
+```
 
 ```
 RESPONSE 404 NOT FOUND
@@ -82,7 +103,7 @@ RESPONSE 418 I'M A TEAPOT
 ```
 
 
-## Binance Exchange Put Portfolio State
+## Binance Exchange Set Portfolio New State
 
 ```
 PUT /api/portfolio
@@ -109,6 +130,7 @@ RESPONSE 202 Accepted
 ```
 
 `portfolio_processing_request` is a uri to and endpoint for checking the status of the processing
+
 `retry_after` informs the client that it can check back after some period of time if they want to check on the status of the processing. This is simply an estimate of when the system expects to be nearly done processing trades.
 
 ```
@@ -117,14 +139,14 @@ RESPONSE 400 Bad Request
 ```
 
 ```
-RESPONSE 400 Bad Request
-{"error": "portions add to more than 1.0"}
+RESPONSE 404 NOT FOUND
+{ "error": "exchange API keys invalid" }
 ```
 
 ## Binance Exchange Check Portfolio Processing
 
 
-`GET /api/portfolio_process/1234ABCD`
+`GET /api/portfolio_process/<processing_id>`
 
 ```
 RESPONSE 200 Accepted
@@ -144,10 +166,18 @@ RESPONSE 202 Accepted
 }
 ```
 
+```
+RESPONSE 410 Gone
+{ 
+	"status": "not found or expired"
+}
+```
 
-`/api/portfolio_process/1234ABCD`
+## 
 
 
 
-`410 Gone`
+
+
+``
 portfolio not found, start over
