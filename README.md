@@ -34,6 +34,7 @@ This system is proposed to run on a Python/Django/Postgres stack, hosted on Hero
 - Operating on Bittrex, Poloniex, and other exchanges
 - Accounting for amounts held offline when converting allocation % to trades
 - simulation mode, check order book, simulate trades, and return API responses normally
+- ignore very small leftover/untradable amounts of coins `portoin < 0.0001 or value < 0.00001 BTC` 
 
 **Will NEVER be in Scope**
 
@@ -63,22 +64,22 @@ In request data, includes json data for Exchange account access (binance only fo
 ```
 RESPONSE 200 OK
 {
-  "binance": {
-    "value": 2.53439324,  # BTC value
-    "allocations": [
-      {
-        "coin": "ETH",
-	"amount": 231.12321311  # amount of tokens
-        "portion": 0.4999  # floor at 4th decimal place
-      },
-      {
-        "coin": "BCH",
-	"amount": 22.12932881  # amount of tokens
-	"portion": 0.4999  # floor at 4th decimal place 
-      },
-      ...
-    ]
-  }
+	"binance": {
+		"value": 2.53439324,  # BTC value
+		"allocations": [
+			{
+				"coin": "ETH",
+				"amount": 231.12321311  # amount of tokens
+				"portion": 0.4999  # floor at 4th decimal place
+			},
+			{
+				"coin": "BCH",
+				"amount": 22.12932881  # amount of tokens
+				"portion": 0.4999  # floor at 4th decimal place 
+			},
+			...
+		]
+	}
 }
 ```
 
@@ -105,6 +106,7 @@ RESPONSE 418 I'M A TEAPOT
 
 
 ## Binance Exchange Set Portfolio New State
+This defines a new target allocatoin for a portfolio. The difference between this target allocatoin and the current state could range from a very small to a very large differenc. Given a set of target alloctions, a portfolio might aim to "cash out" 150 coins and move 100% of assets to USDT, or vis versa.
 
 ```
 PUT /api/portfolio
@@ -114,19 +116,20 @@ PUT /api/portfolio
 		"secret_key": "***",
 		"allocations": [
 			{"coin":"ETH", "portion": 0.43},
-			{"coin":"USDT", "portion": 0.21},
-			{"coin":"BCH", "portion": 0.36}
+			{"coin":"USDT", "portion": 0.2100},
+			{"coin":"BCH", "portion": 0.3599}
 		]
 	}
 }
 ```
+This example targets 43% ETH, 36% BCH and 21% USDT. The sum of portions should be close to 100% (between 99% and 100%). Any and all leftover/extra assets always assume to being held in BTC. In this example it's expected that some small amount ~0.01% will be leftover in BTC
 
 ```
 RESPONSE 202 Accepted
 { 
 	"status": "target allocations queued for processing",
 	"portfolio_processing_request": "/api/portfolio_process/1234ABCD",
-	"retry_after": 15000  # milliseconds
+	"retry_after": 25000  # milliseconds
 }
 ```
 
@@ -146,26 +149,41 @@ RESPONSE 404 NOT FOUND
 
 ## Binance Exchange Check Portfolio Processing
 
-
 `GET /api/portfolio_process/<processing_id>`
-
-```
-RESPONSE 200 Accepted
-{ 
-	"status": "processing complete",
-	"portfolio_processing_request": "/api/portfolio_process/1234ABCD",
-	"retry_after": 15000  # milliseconds
-}
-```
 
 ```
 RESPONSE 202 Accepted
 { 
 	"status": "processing in progress",
 	"portfolio_processing_request": "/api/portfolio_process/1234ABCD",
-	"retry_after": 15000  # milliseconds
+	"retry_after": 12000  # milliseconds
 }
 ```
+
+```
+RESPONSE 200 Accepted
+{ 
+	"status": "processing complete in 16092ms",
+	"binance": {
+		"value": 2.53439324,  # BTC value
+		"allocations": [
+			{
+				"coin": "ETH",
+				"amount": 231.12321311  # amount of tokens
+				"portion": 0.4999  # floor at 4th decimal place
+			},
+			{
+				"coin": "BCH",
+				"amount": 22.12932881  # amount of tokens
+				"portion": 0.4999  # floor at 4th decimal place 
+			},
+			...
+		]
+	}
+}
+```
+
+
 
 ```
 RESPONSE 410 Gone OR 404 Not Found
