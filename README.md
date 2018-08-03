@@ -9,11 +9,12 @@ This system is proposed to run on a Python/Django/Postgres stack, hosted on Hero
 
 ### Todo (Tom and Arsèn):
 
-- [ ] how are API auth keys created and used
-- [ ] more secure way of passing exchange api keys?
 - [ ] set requirements for accuracy, dynamic to support small/large portfolios and coins with low volume
 - [ ] estimate expected load on the service
 - [ ] finalize architecture requirements
+- [ ] Limit slippage using a price difference threshold (1%?): I don't
+think Exchanges support price difference threshold, if you place a market
+order there is no guarantee on the execution price.
 
 
 **Currently In Scope**
@@ -23,9 +24,10 @@ This system is proposed to run on a Python/Django/Postgres stack, hosted on Hero
 - Calculate difference between current state and desired state of a portfolio allocation.
 - Determine shortest/cheapest path for trading from current state to desired state
 - Make trades by taking market orders
-- Limit slippage using a price difference threshold (1%?)
-- 5 minute expiration on processing orders
-- extra/leftover assets held in BTC
+- 5 minute expiration on processing orders. We will fail if we can't execute limit orders in 5 minutes if the volume of transactions is too high.
+- extra/leftover assets held in BTC, i.e. if requested portfolio ratios do not sum to one, we assume the rest is BTC.
+- secure way of passing exchange api keys.
+- use of API auth keys
 
 
 **Currently out of Scope, but maybe add later**
@@ -43,6 +45,7 @@ This system is proposed to run on a Python/Django/Postgres stack, hosted on Hero
 - publish data on intended trades *before* placing orders
 - hold exchange api keys in *persistant* storage or database
 - compare or analyze portfolios against each other
+
 
 
 ## Binance Exchange Get Portfolio State
@@ -193,4 +196,110 @@ RESPONSE 410 Gone OR 404 Not Found
 ```
 processing task not found because it was expired from the cache, client should start over with a new set of requests
 
+### Authentication with the server
 
+Each request should have `api_key` attribute, that will server to authenticate with out server.
+```
+{
+  "api_key": "...",
+  ...
+}
+```
+if the api key is not valid, the user will get 
+ 
+```
+RESPONSE 401 Unauthorized
+{ 
+	"status": "Not authorized"
+}
+```
+
+If trying to view another user's rebalance it will get 410 or 404
+
+```
+RESPONSE 410 Gone OR 404 Not Found
+{ 
+	"status": "not found or expired"
+}
+```
+
+#### API key creation
+
+Key creation will be manual, and will be done using the django admin interface by superusers.
+
+
+
+## Architecture Proposal for async execution
+
+This proposal works very well with the requirements, but is not very
+simple and since it is async, could potentially result in a lot of
+expirations if there are not enough workers running.
+
+This will be a very scalable architecture, but will require at least 4 different services.
+- django webserver
+- postgres database [used for user authentication]
+- redis for message brokerage
+- celery worker(s) for task execution.
+
+### Creating rebalance request
+
+User will interact with the django webserver, that will use the database
+to make sure user has appropriate access rights.
+
+After the webserver receives a rebalance request (PUT /api/portfolio),
+it creates a rebalance tasks and stores the tasks in an redis database
+(message broker). [This is ephemeral database that will lose all data
+if restarted.] Each task will have a unique id which will be relayed to
+the user as a rebalance id, and the user could query the webserver in
+the future to get the progress report.
+
+There are going to be multiple workers (this should be scaled so very
+low latency in the system) that will retrieve tasks from the message
+broker (redis) and execute desired trades, and update the task with results.
+
+### Checking rebalance progress
+
+Whenever the webserver receives request to see the progress
+(GET /api/portfolio_process/TASK-ID) it will query the webserver, to see the
+status of the task, which will be stored in the redis message broker
+together with the result of the task.
+
+### Checking Portfolio State
+
+This process will query binance api directly (after checking access
+rights) for allocations, and augment results returned by Binance will
+allocation ratios.
+
+
+### Securing api key passing.
+
+In order to make exchange api key passing secure
+- we are going to use SSL on the broker server, to make sure we can pass
+exchange api keys over internet without jeopardizing them.
+- we are going to use ssl on the webserver as well.
+
+
+## Algorithm proposal for placing orders
+
+We propose execution using market orders or limit orders. Depending
+on volume. **Note** there is a problem with limit orders that there
+are slow by nature and they might be direct orders between currency
+pairs and BTC, and we might not pick the most liquid currency pair,
+and we don't have a performance guarantee, because prices change within
+5 minute period as well.
+
+Executed on celery workers, see above proposal for details.
+This algorithm requires VOLUME_THRESHOLD variable which we propose should
+be given by the user.
+
+1. Get user resources
+1. Get market prices for all commodities
+1. estimate the volume of trades using wall prices and market order algorithm
+1. if volume < VOLUME_THRESHOLD
+   - execute market orders
+1. if volume > VOLUME_THRESHOLD
+   - use mid market prices and create efficient limit orders
+   - place limit orders with 1 minute expiration
+   - sleep for 1 minute
+   - if retries_left > 0: retry with 1 less retry
+   - stop execution without rebalancing
