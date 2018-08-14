@@ -188,6 +188,7 @@ RESPONSE 410 Gone OR 404 Not Found
 ```
 processing task not found because it was expired from the cache, client should start over with a new set of requests
 
+
 ### Authentication with the server
 
 Each request should have `api_key` attribute, that will server to authenticate with out server.
@@ -212,6 +213,18 @@ If trying to view another user's rebalance it will get 410 or 404
 RESPONSE 410 Gone OR 404 Not Found
 { 
 	"status": "not found or expired"
+}
+```
+
+## Getting Statistics about market order execution.
+
+`GET /market_order_statistics/`
+
+```
+{ 
+	"market orders": {
+		"mean absoluate difference percent": 0.3
+	}
 }
 ```
 
