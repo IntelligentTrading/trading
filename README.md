@@ -7,16 +7,6 @@ Using Technical Analysis, there are many buy and sell opportunities happening si
 
 This system is proposed to run on a Python/Django/Postgres stack, hosted on Heroku
 
-### Todo (Tom and Arsèn):
-
-- [ ] set requirements for accuracy, dynamic to support small/large portfolios and coins with low volume
-- [ ] estimate expected load on the service
-- [ ] finalize architecture requirements
-- [ ] Limit slippage using a price difference threshold (1%?): I don't
-think Exchanges support price difference threshold, if you place a market
-order there is no guarantee on the execution price.
-
-
 **Currently In Scope**
 
 - Check coin balances and for any Binance exchange account given a set of api keys.
@@ -28,7 +18,7 @@ order there is no guarantee on the execution price.
 - extra/leftover assets held in BTC, i.e. if requested portfolio ratios do not sum to one, we assume the rest is BTC.
 - secure way of passing exchange api keys.
 - use of API auth keys
-
+- Track amount of slippage made using market orders
 
 **Currently out of Scope, but maybe add later**
 
@@ -55,6 +45,7 @@ order there is no guarantee on the execution price.
 ```
 GET /api/portfolio
 {
+        "api_key": "...",
 	"binance": {
 		"api_key": "***",
 		"secret_key": "***",
@@ -114,6 +105,7 @@ This defines a new target allocatoin for a portfolio. The difference between thi
 ```
 PUT /api/portfolio
 {
+        "api_key": "...",
 	"binance": {
 		"api_key": "***",
 		"secret_key": "***",
@@ -227,7 +219,14 @@ RESPONSE 410 Gone OR 404 Not Found
 
 Key creation will be manual, and will be done using the django admin interface by superusers.
 
+### Storing executed orders in the postgres database
 
+In order to allow for monitoring how much slippage was in place,
+we are going to store the following information in the postgres database for market orders.
+
+- Mid Market price when deciding to place orders (the number fed into the algorithm)
+- effective execution price of the order (weighted sum if order was split into parts by the exchange)
+- amount bought or sold.
 
 ## Architecture Proposal for async execution
 
