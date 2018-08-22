@@ -1,0 +1,15 @@
+{
+  "linters": {
+    "flake8": {
+      "flags": ["--select", "E,W,N,F"],
+      "include": "(\\.py$)",
+      "exclude": "(/migrations/)",
+      "type": "flake8"
+    },
+    "jshint": {
+      "include": "(\\.js$)",
+      "exclude": "(/migrations/)",
+      "type": "jshint"
+    }
+  }
+}
