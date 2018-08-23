@@ -6,6 +6,7 @@ class Exchange:
         pass
 
     def get_order_book(self, depth: int =1):
+        # products in 'commodity_base' format
         raise NotImplementedError
 
     def get_resources(self):

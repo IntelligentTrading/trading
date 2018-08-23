@@ -1,4 +1,4 @@
-from internal.enums import OrderType, OrderSide
+from internals.enums import OrderType, OrderSide
 from decimal import Decimal
 
 
