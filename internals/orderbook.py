@@ -7,6 +7,16 @@ class OrderBook:
         self.product = product
         self.wall_ask = None
         self.wall_bid = None
+        if type(orderbook_from_market) in [float, Decimal]:
+            self.wall_ask = orderbook_from_market
+            self.wall_bid = orderbook_from_market
+        if type(orderbook_from_market) is dict:
+            self.wall_bid = orderbook_from_market['bid']
+            self.wall_ask = orderbook_from_market['ask']
+        if type(orderbook_from_market) is list:
+            assert len(orderbook_from_market) == 2
+            self.wall_ask = max(orderbook_from_market)
+            self.wall_bid = min(orderbook_from_market)
         # TODO: parse orderbook from market
 
     def get_mid_market_price(self) -> Decimal:

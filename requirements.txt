@@ -1,0 +1,9 @@
+numpy==1.15
+nose-cov==1.6
+coverage==4.4.1
+requests==2.19.1
+gdax==1.0.6
+ujson==1.35
+python-binance==0.6.3
+networkx==2.0
+

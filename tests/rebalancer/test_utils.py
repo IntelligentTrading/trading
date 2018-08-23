@@ -14,21 +14,17 @@ class UtilsTester(unittest.TestCase):
         pass
 
     def test_get_mid_prices_from_orderbooks(self):
-        orderbook_BTC_USDT = OrderBook('BTC_USDT', '')
-        orderbook_BTC_USDT.wall_ask = Decimal('15000')
-        orderbook_BTC_USDT.wall_bid = Decimal('5000')
+        orderbook_BTC_USDT = OrderBook(
+            'BTC_USDT', [Decimal('15000'), Decimal('5000')])
 
-        orderbook_ETH_BTC = OrderBook('ETH_BTC', '')
-        orderbook_ETH_BTC.wall_ask = Decimal('0.005')
-        orderbook_ETH_BTC.wall_bid = Decimal('0.003')
+        orderbook_ETH_BTC = OrderBook(
+            'ETH_BTC', [Decimal('0.005'), Decimal('0.003')])
 
-        orderbook_ADA_BTC = OrderBook('ADA_BTC', '')
-        orderbook_ADA_BTC.wall_ask = Decimal('0.00003')
-        orderbook_ADA_BTC.wall_bid = Decimal('0.00001')
+        orderbook_ADA_BTC = OrderBook(
+            'ADA_BTC', [Decimal('0.00003'), Decimal('0.00001')])
 
-        orderbook_EOS_ETH = OrderBook('EOS_ETH', '')
-        orderbook_EOS_ETH.wall_ask = Decimal('0.03')
-        orderbook_EOS_ETH.wall_bid = Decimal('0.01')
+        orderbook_EOS_ETH = OrderBook(
+            'EOS_ETH', [Decimal('0.03'), Decimal('0.01')])
 
         orderbooks = [orderbook_EOS_ETH, orderbook_ADA_BTC,
                       orderbook_ETH_BTC, orderbook_BTC_USDT]
@@ -199,37 +195,29 @@ class UtilsTester(unittest.TestCase):
 
     def test_get_price_estimates_from_orderbooks(self):
 
-        orderbook_BTC_USDT = OrderBook('BTC_USDT', '')
-        orderbook_BTC_USDT.wall_ask = Decimal('10000')
-        orderbook_BTC_USDT.wall_bid = Decimal('10000')
+        orderbook_BTC_USDT = OrderBook(
+            'BTC_USDT', [Decimal('10000'), Decimal('10000')])
 
-        orderbook_ETH_USDT = OrderBook('ETH_USDT', '')
-        orderbook_ETH_USDT.wall_ask = Decimal('1000')
-        orderbook_ETH_USDT.wall_bid = Decimal('0.0000001')
+        orderbook_ETH_USDT = OrderBook(
+            'ETH_USDT', [Decimal('1000'), Decimal('0.0000001')])
 
-        orderbook_LTC_USDT = OrderBook('LTC_USDT', '')
-        orderbook_LTC_USDT.wall_ask = Decimal('100')
-        orderbook_LTC_USDT.wall_bid = Decimal('0.0000001')
+        orderbook_LTC_USDT = OrderBook(
+            'LTC_USDT', [Decimal('100'), Decimal('0.0000001')])
 
-        orderbook_BNB_USDT = OrderBook('BNB_USDT', '')
-        orderbook_BNB_USDT.wall_ask = Decimal('10')
-        orderbook_BNB_USDT.wall_bid = Decimal('0.0000001')
+        orderbook_BNB_USDT = OrderBook(
+            'BNB_USDT', [Decimal('10'), Decimal('0.0000001')])
 
-        orderbook_ETH_BTC = OrderBook('ETH_BTC', '')
-        orderbook_ETH_BTC.wall_ask = 1 / Decimal('11')
-        orderbook_ETH_BTC.wall_bid = Decimal('0.000000001')
+        orderbook_ETH_BTC = OrderBook(
+            'ETH_BTC', [1 / Decimal('11'), Decimal('0.000000001')])
 
-        orderbook_LTC_BTC = OrderBook('LTC_BTC', '')
-        orderbook_LTC_BTC.wall_ask = 1 / Decimal('101')
-        orderbook_LTC_BTC.wall_bid = Decimal('0.000000001')
+        orderbook_LTC_BTC = OrderBook(
+            'LTC_BTC', [1 / Decimal('101'), Decimal('0.000000001')])
 
-        orderbook_EOS_ETH = OrderBook('EOS_ETH', '')
-        orderbook_EOS_ETH.wall_ask = Decimal('0.1')
-        orderbook_EOS_ETH.wall_bid = Decimal('0.00000001')
+        orderbook_EOS_ETH = OrderBook(
+            'EOS_ETH', [Decimal('0.1'), Decimal('0.00000001')])
 
-        orderbook_LTC_ETH = OrderBook('LTC_ETH', '')
-        orderbook_LTC_ETH.wall_ask = Decimal('0.1')
-        orderbook_LTC_ETH.wall_bid = Decimal('0.1')
+        orderbook_LTC_ETH = OrderBook(
+            'LTC_ETH', [Decimal('0.1'), Decimal('0.1')])
 
         orderbooks = [orderbook_BTC_USDT, orderbook_ETH_USDT,
                       orderbook_LTC_USDT, orderbook_BNB_USDT,
