@@ -1,17 +1,19 @@
 import unittest
 from rebalancer.utils import get_mid_prices_from_orderbooks
 from rebalancer.utils import get_weights_from_resources
-from rebalancer.utils import dfs, topological_sort
+from rebalancer.utils import dfs, topological_sort, bfs
+from rebalancer.utils import get_price_estimates_from_orderbooks
 from internals.orderbook import OrderBook
 from decimal import Decimal
 from collections import defaultdict
+import numpy as np
 
 
 class UtilsTester(unittest.TestCase):
     def test_rebalance_orders(self):
         pass
 
-    def test_get_mid_prices_from_orderbook(self):
+    def test_get_mid_prices_from_orderbooks(self):
         orderbook_BTC_USDT = OrderBook('BTC_USDT', '')
         orderbook_BTC_USDT.wall_ask = Decimal('15000')
         orderbook_BTC_USDT.wall_bid = Decimal('5000')
@@ -171,3 +173,83 @@ class UtilsTester(unittest.TestCase):
         self.assertEqual(len(vertices), 3)
         self.assertEqual(vertices[0], 'C')
         self.assertSetEqual(set(vertices), set('CEF'))
+
+    def test_bfs(self):
+        graph = defaultdict(dict, {
+            'USDT': {'BTC': np.log(10000),
+                     'ETH': np.log(1000),
+                     'LTC': np.log(100),
+                     'BNB': np.log(10)},
+            'BTC': {'USDT': -np.log(10000),
+                    'ETH': -np.log(11),
+                    'LTC': -np.log(101)},
+            'ETH': {'EOS': -np.log(10), 'LTC': -np.log(10)},
+            'LTC': {'ETH': np.log(10)}
+        })
+        dists = bfs(graph, 'USDT')
+        correct_dists = {
+            'USDT': np.log(1),
+            'BNB': np.log(10),
+            'BTC': np.log(10000),
+            'ETH': np.log(10000) - np.log(11),
+            'LTC': np.log(1000) - np.log(11),
+            'EOS': np.log(1000) - np.log(11)
+        }
+        self.assertDictAlmostEqual(dists, correct_dists)
+
+    def test_get_price_estimates_from_orderbooks(self):
+
+        orderbook_BTC_USDT = OrderBook('BTC_USDT', '')
+        orderbook_BTC_USDT.wall_ask = Decimal('10000')
+        orderbook_BTC_USDT.wall_bid = Decimal('10000')
+
+        orderbook_ETH_USDT = OrderBook('ETH_USDT', '')
+        orderbook_ETH_USDT.wall_ask = Decimal('1000')
+        orderbook_ETH_USDT.wall_bid = Decimal('0.0000001')
+
+        orderbook_LTC_USDT = OrderBook('LTC_USDT', '')
+        orderbook_LTC_USDT.wall_ask = Decimal('100')
+        orderbook_LTC_USDT.wall_bid = Decimal('0.0000001')
+
+        orderbook_BNB_USDT = OrderBook('BNB_USDT', '')
+        orderbook_BNB_USDT.wall_ask = Decimal('10')
+        orderbook_BNB_USDT.wall_bid = Decimal('0.0000001')
+
+        orderbook_ETH_BTC = OrderBook('ETH_BTC', '')
+        orderbook_ETH_BTC.wall_ask = 1 / Decimal('11')
+        orderbook_ETH_BTC.wall_bid = Decimal('0.000000001')
+
+        orderbook_LTC_BTC = OrderBook('LTC_BTC', '')
+        orderbook_LTC_BTC.wall_ask = 1 / Decimal('101')
+        orderbook_LTC_BTC.wall_bid = Decimal('0.000000001')
+
+        orderbook_EOS_ETH = OrderBook('EOS_ETH', '')
+        orderbook_EOS_ETH.wall_ask = Decimal('0.1')
+        orderbook_EOS_ETH.wall_bid = Decimal('0.00000001')
+
+        orderbook_LTC_ETH = OrderBook('LTC_ETH', '')
+        orderbook_LTC_ETH.wall_ask = Decimal('0.1')
+        orderbook_LTC_ETH.wall_bid = Decimal('0.1')
+
+        orderbooks = [orderbook_BTC_USDT, orderbook_ETH_USDT,
+                      orderbook_LTC_USDT, orderbook_BNB_USDT,
+                      orderbook_ETH_BTC, orderbook_LTC_BTC,
+                      orderbook_EOS_ETH, orderbook_LTC_ETH]
+
+        price_estimates = get_price_estimates_from_orderbooks(
+            orderbooks, 'USDT')
+
+        correct_price_estimates = {
+            'USDT': Decimal('1'),
+            'BNB': Decimal('10'),
+            'BTC': Decimal('10000'),
+            'ETH': Decimal('10000') / Decimal('11'),
+            'LTC': Decimal('1000') / Decimal('11'),
+            'EOS': Decimal('1000') / Decimal('11')
+        }
+        self.assertDictAlmostEqual(correct_price_estimates, price_estimates)
+
+    def assertDictAlmostEqual(self, d1, d2, *args, **kwargs):
+        self.assertEqual(set(d1.keys()), set(d2.keys()))
+        for i in d1:
+            self.assertAlmostEqual(d1[i], d2[i], *args, **kwargs)
