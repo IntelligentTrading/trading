@@ -1,7 +1,7 @@
 from rebalancer.utils import rebalance_orders,\
     get_weights_from_resources, topological_sort,\
     get_price_estimates_from_orderbooks, spread_to_fee, get_total_fee, \
-    parse_market_orders
+    parse_market_orders, get_portfolio_value_from_resources
 from typing import Dict
 from exchange.exchange import Exchange
 from decimal import Decimal
@@ -13,7 +13,7 @@ def market_order_rebalance(exchange: Exchange,
     # TODO: rebalance with market orders
     resources = exchange.get_resources()
     currencies = (exchange.through_trade_currencies() |
-                  set(list(resources.keys()) | list(weights.keys())))
+                  set(list(resources.keys())) | set(list(weights.keys())))
     all_possible_products = ['_'.join([i, j])
                              for i in currencies
                              for j in currencies]
@@ -26,7 +26,8 @@ def market_order_rebalance(exchange: Exchange,
     price_estimates = get_price_estimates_from_orderbooks(orderbooks, base)
     initial_weights = get_weights_from_resources(
         resources, price_estimates)
-
+    portfolio_value = get_portfolio_value_from_resources(
+        resources, price_estimates)
     orderbooks = {orderbook.product: orderbook
                   for orderbook in orderbooks}
     fees = {product: exchange.get_taker_fee(product)
@@ -40,8 +41,11 @@ def market_order_rebalance(exchange: Exchange,
 
     orders = rebalance_orders(
         initial_weights, weights, total_fees)
+    orders = [(*order[:2], order[2] * portfolio_value) for order in orders]
     orders = topological_sort(orders)
-    orders = [parse_market_orders(order, products, price_estimates, base)
+    orders = [parse_market_orders(order, products,
+                                  price_estimates,
+                                  base)
               for order in orders]
 
     ret_orders = []

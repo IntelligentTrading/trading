@@ -4,11 +4,14 @@ from decimal import Decimal
 from collections import defaultdict
 from internals.order import Order
 from internals.enums import OrderType, OrderAction
+from networkx import digraph
+from networkx import flow
 
 
 def rebalance_orders(initial_weights: Dict[str, Decimal],
                      final_weights: Dict[str, Decimal],
-                     fee: Dict[str, Decimal]) -> (
+                     fees: Dict[str, Decimal],
+                     precision: Decimal=Decimal('1e-8')) -> (
         List[Tuple[str, str, Decimal]]):
     """
     :param initial_weights: weights before rebalance
@@ -18,7 +21,57 @@ def rebalance_orders(initial_weights: Dict[str, Decimal],
                              currency from, currency to, quantity_in_base
                                                 (might be product, quantity)
     """
-    raise NotImplementedError
+    parsed_fees = {tuple(k.split('_')): v for k, v in fees.items()}
+    digraph = create_flow_digraph(
+        initial_weights, final_weights, parsed_fees, precision=precision)
+    orders_to_make = flow.min_cost_flow(digraph)
+    orders = []
+    for currency_from, dct in orders_to_make.items():
+        if currency_from == 'start':
+            continue
+        for currency_to, quantity_in_base in dct.items():
+            if currency_to == 'end' or quantity_in_base < 1e-18:
+                continue
+            orders.append((currency_from, currency_to,
+                           Decimal(quantity_in_base) * precision))
+    return orders
+
+
+def create_flow_digraph(initial_weights: Dict[str, Decimal],
+                        final_weights: Dict[str, Decimal],
+                        total_fees: Dict[Tuple[str, str], Decimal],
+                        precision: Decimal=float('1e-8')) -> digraph.DiGraph:
+    currencies = set(initial_weights.keys()) | set(final_weights.keys())
+    start = 'start'
+    end = 'end'
+    inv_precision = 1 / float(precision)
+
+    w1 = {k: int(float(v) * inv_precision) for k, v in initial_weights.items()}
+    w2 = {k: int(float(v) * inv_precision) for k, v in final_weights.items()}
+    demand_from = sum(w1.values())
+    demand_to = sum(w2.values())
+    demand = min(demand_to, demand_from)
+    graph = digraph.DiGraph()
+
+    graph.add_nodes_from(currencies, demand=0.)
+    graph.add_node(start, demand=-demand)
+    graph.add_node(end, demand=demand)
+
+    for currency, capacity in w1.items():
+        graph.add_edge(start, currency, capacity=capacity, weight=0)
+
+    for currency, capacity in w2.items():
+        graph.add_edge(currency, end, capacity=capacity, weight=0)
+
+    for (c1, c2), fee in total_fees.items():
+        graph.add_edge(c1, c2,
+                       capacity=float('inf'),
+                       weight=-int(float((1 - fee).log10()) * inv_precision))
+        graph.add_edge(c2, c1,
+                       capacity=float('inf'),
+                       weight=-int(float((1 - fee).log10()) * inv_precision))
+
+    return graph
 
 
 def get_weights_from_resources(
@@ -36,15 +89,27 @@ def get_weights_from_resources(
     return weights
 
 
+def get_portfolio_value_from_resources(
+        resources: Dict[str, Decimal],
+        prices: Dict[str, Decimal]) -> Decimal:
+    resources_in_base = {
+        currency: resources[currency] * prices[currency]
+        for currency in resources
+    }
+    portfolio_value = sum(resources_in_base.values())
+    return portfolio_value
+
+
 def get_price_estimates_from_orderbooks(
         orderbooks: List[OrderBook], base: str) -> Dict[str, Decimal]:
     """
     get currency to price dictionary
     """
-    currency_pair_prices = get_prices_from_orderbooks(orderbooks)
+    currency_pair_prices = get_mid_prices_from_orderbooks(orderbooks)
     graph = {}
 
-    for (currency_from, currencies_to), price in currency_pair_prices.items():
+    for product, price in currency_pair_prices.items():
+        currency_from, currencies_to = product.split('_')
         if currency_from not in graph:
             graph[currency_from] = {}
         graph[currency_from][currencies_to] = -price.log10()
@@ -64,22 +129,6 @@ def get_mid_prices_from_orderbooks(orderbooks: List[OrderBook]) -> (
     reverse_prices = {
         '_'.join(product.split('_')[::-1]): 1 / prices[product]
         for product in prices.keys()
-    }
-    prices.update(reverse_prices)
-    return prices
-
-
-def get_prices_from_orderbooks(orderbooks: List[OrderBook]) -> (
-        Dict[Tuple[str, str], Decimal]):
-    """
-    get product to price dictionary (with reverse products)
-    """
-    prices = {tuple(orderbook.product.split('_')): orderbook.get_wall_bid()
-              for orderbook in orderbooks}
-    reverse_prices = {
-        tuple(orderbook.product.split('_')[::-1]): (
-            1 / orderbook.get_wall_ask())
-        for orderbook in orderbooks
     }
     prices.update(reverse_prices)
     return prices
@@ -120,20 +169,21 @@ def dfs(graph: Dict[str, Set[str]], visited: Set[str], start: str)-> List[str]:
 
 
 def bfs(graph: Dict[str, Dict[str, Decimal]], start: str)-> Dict[str, Decimal]:
-    queue = [start]
-    dists = {start: 0}
+    queue = [[start, 0]]
+    dists = {start: [0, 0]}
     i = 0
     while i < len(queue):
-        current_vertex = queue[i]
+        current_vertex, depth = queue[i]
         for v, w in graph[current_vertex].items():
-            if v in dists and dists[v] < dists[current_vertex] + w:
+            if v in dists and (dists[v][1] != dists[current_vertex][1] or (
+                    dists[v][0] < dists[current_vertex][0] + w)):
                 continue
             if v not in dists:
-                queue.append(v)
-            dists[v] = dists[current_vertex] + w
+                queue.append([v, depth + 1])
+            dists[v] = [dists[current_vertex][0] + w, depth + 1]
         i += 1
 
-    return dists
+    return {k: v[0] for k, v in dists.items()}
 
 
 def spread_to_fee(orderbook):

@@ -4,7 +4,8 @@ from rebalancer.utils import get_weights_from_resources
 from rebalancer.utils import dfs, topological_sort, bfs, parse_market_orders
 from rebalancer.utils import get_price_estimates_from_orderbooks
 from rebalancer.utils import spread_to_fee, get_total_fee
-from rebalancer.utils import get_prices_from_orderbooks
+from rebalancer.utils import rebalance_orders
+from rebalancer.utils import get_portfolio_value_from_resources
 from internals.orderbook import OrderBook
 from internals.order import Order
 from internals.enums import OrderType, OrderAction
@@ -15,7 +16,30 @@ import numpy as np
 
 class UtilsTester(unittest.TestCase):
     def test_rebalance_orders(self):
-        pass
+        initial_weights = {'BTC': Decimal('0.2'),
+                           'ETH': Decimal('0.3'),
+                           'USDT': Decimal('0.5')}
+        final_weights = {'BTC': Decimal('0.5'),
+                         'ETH': Decimal('0.2'),
+                         'USDT': Decimal('0.3')}
+
+        fees = {'BTC_USDT': Decimal('0.002'), 'BTC_ETH': Decimal(
+            '0.0018'), 'ETH_USDT': Decimal('0.0019')}
+
+        orders = rebalance_orders(initial_weights, final_weights, fees)
+        orders = [order for order in orders if order[2] > Decimal('1e-9')]
+        orders.sort()
+        self.assertEqual(orders[0], ('ETH', 'BTC', Decimal('0.1')))
+        self.assertEqual(orders[1], ('USDT', 'BTC', Decimal('0.2')))
+
+        fees = {'BTC_USDT': Decimal('0.002'), 'BTC_ETH': Decimal(
+            '0.0008'), 'ETH_USDT': Decimal('0.0009')}
+
+        orders = rebalance_orders(initial_weights, final_weights, fees)
+        orders = [order for order in orders if order[2] > Decimal('1e-9')]
+        orders.sort()
+        self.assertEqual(orders[0], ('ETH', 'BTC', Decimal('0.3')))
+        self.assertEqual(orders[1], ('USDT', 'ETH', Decimal('0.2')))
 
     def test_get_mid_prices_from_orderbooks(self):
         orderbook_BTC_USDT = OrderBook(
@@ -67,6 +91,23 @@ class UtilsTester(unittest.TestCase):
         }
         weights = get_weights_from_resources(resources, prices)
         self.assertDictEqual(weights, correct_weights)
+
+    def test_get_portfolio_value_from_resources(self):
+        resources = {
+            'BTC': Decimal('1'),
+            'USDT': Decimal('1000'),
+            'ETH': Decimal('10'),
+            'LTC': Decimal('50')
+        }
+        prices = {
+            'BTC': Decimal('10000'),
+            'USDT': Decimal('1'),
+            'ETH': Decimal('1000'),
+            'LTC': Decimal('80')
+        }
+        correct_portfolio_value = Decimal('25000')
+        portfolio_value = get_portfolio_value_from_resources(resources, prices)
+        self.assertEqual(portfolio_value, correct_portfolio_value)
 
     def test_topological_sort(self):
         orders = [('BTC', 'USDT', Decimal(1)),
@@ -199,29 +240,14 @@ class UtilsTester(unittest.TestCase):
 
     def test_get_price_estimates_from_orderbooks(self):
 
-        orderbook_BTC_USDT = OrderBook(
-            'BTC_USDT', [Decimal('10000'), Decimal('10000')])
-
-        orderbook_ETH_USDT = OrderBook(
-            'ETH_USDT', [Decimal('1000'), Decimal('0.0000001')])
-
-        orderbook_LTC_USDT = OrderBook(
-            'LTC_USDT', [Decimal('100'), Decimal('0.0000001')])
-
-        orderbook_BNB_USDT = OrderBook(
-            'BNB_USDT', [Decimal('10'), Decimal('0.0000001')])
-
-        orderbook_ETH_BTC = OrderBook(
-            'ETH_BTC', [1 / Decimal('11'), Decimal('0.000000001')])
-
-        orderbook_LTC_BTC = OrderBook(
-            'LTC_BTC', [1 / Decimal('101'), Decimal('0.000000001')])
-
-        orderbook_EOS_ETH = OrderBook(
-            'EOS_ETH', [Decimal('0.1'), Decimal('0.00000001')])
-
-        orderbook_LTC_ETH = OrderBook(
-            'LTC_ETH', [Decimal('0.1'), Decimal('0.1')])
+        orderbook_BTC_USDT = OrderBook('BTC_USDT', Decimal('10000'))
+        orderbook_ETH_USDT = OrderBook('ETH_USDT', Decimal('1000'))
+        orderbook_LTC_USDT = OrderBook('LTC_USDT', Decimal('100'))
+        orderbook_BNB_USDT = OrderBook('BNB_USDT', Decimal('10'))
+        orderbook_ETH_BTC = OrderBook('ETH_BTC', 1 / Decimal('11'))
+        orderbook_LTC_BTC = OrderBook('LTC_BTC', 1 / Decimal('101'))
+        orderbook_EOS_ETH = OrderBook('EOS_ETH', Decimal('0.1'))
+        orderbook_LTC_ETH = OrderBook('LTC_ETH', Decimal('0.1'))
 
         orderbooks = [orderbook_BTC_USDT, orderbook_ETH_USDT,
                       orderbook_LTC_USDT, orderbook_BNB_USDT,
@@ -240,35 +266,6 @@ class UtilsTester(unittest.TestCase):
             'EOS': Decimal('1000') / Decimal('11')
         }
         self.assertDictAlmostEqual(correct_price_estimates, price_estimates)
-
-    def test_get_prices_from_orderbooks(self):
-        orderbook_BTC_USDT = OrderBook(
-            'BTC_USDT', [Decimal('10000'), Decimal('5000')])
-
-        orderbook_ETH_BTC = OrderBook(
-            'ETH_BTC', [Decimal('0.004'), Decimal('0.003')])
-
-        orderbook_ADA_BTC = OrderBook(
-            'ADA_BTC', [Decimal('0.00002'), Decimal('0.00001')])
-
-        orderbook_EOS_ETH = OrderBook(
-            'EOS_ETH', [Decimal('0.02'), Decimal('0.01')])
-
-        orderbooks = [orderbook_EOS_ETH, orderbook_ADA_BTC,
-                      orderbook_ETH_BTC, orderbook_BTC_USDT]
-
-        prices = get_prices_from_orderbooks(orderbooks)
-        correct_prices = {
-            ('BTC', 'USDT'): Decimal('5000'),
-            ('ETH', 'BTC'): Decimal('0.003'),
-            ('ADA', 'BTC'): Decimal('0.00001'),
-            ('EOS', 'ETH'): Decimal('0.01'),
-            ('USDT', 'BTC'): Decimal('0.0001'),
-            ('BTC', 'ETH'): Decimal('250'),
-            ('BTC', 'ADA'): Decimal('50000'),
-            ('ETH', 'EOS'): Decimal('50')
-        }
-        self.assertDictEqual(prices, correct_prices)
 
     def test_spread_to_fee(self):
         fee = Decimal('0.001')
@@ -299,7 +296,6 @@ class UtilsTester(unittest.TestCase):
             'LTC': Decimal('1000') / Decimal('11'),
             'EOS': Decimal('1000') / Decimal('11')
         }
-
         pre_order = ('BTC', 'USDT', Decimal('10000'))
         order = parse_market_orders(
             pre_order, products, price_estimates, 'USDT')
