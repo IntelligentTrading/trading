@@ -1,7 +1,9 @@
 from internals.orderbook import OrderBook
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Set
 from decimal import Decimal
 from collections import defaultdict
+from internals.order import Order
+from internals.enums import OrderType, OrderAction
 
 
 def rebalance_orders(initial_weights: Dict[str, Decimal],
@@ -104,7 +106,7 @@ def topological_sort(orders: List[Tuple[str, str, Decimal]]) -> (
     return orders
 
 
-def dfs(graph, visited, start):
+def dfs(graph: Dict[str, Set[str]], visited: Set[str], start: str)-> List[str]:
     visited.add(start)
     nexts = []
     for currency in graph[start]:
@@ -115,7 +117,7 @@ def dfs(graph, visited, start):
     return nexts
 
 
-def bfs(graph, start):
+def bfs(graph: Dict[str, Dict[str, Decimal]], start: str)-> Dict[str, Decimal]:
     queue = [start]
     dists = {start: 0}
     i = 0
@@ -130,3 +132,22 @@ def bfs(graph, start):
         i += 1
 
     return dists
+
+
+def parse_market_orders(order: Tuple[str, str, Decimal],
+                        products: List[str],
+                        price_estimates: Dict[str, Decimal],
+                        base: str):
+    product = [product for product in products if product == '_'.join(
+        order[:2]) or product == '_'.join(order[:2][::-1])][0]
+
+    quantity_in_base = order[2]
+    quantity = quantity_in_base * (
+        price_estimates[base] / price_estimates[product.split('_')[0]])
+
+    if product == '_'.join(order[:2]):
+        side = OrderAction.SELL
+    else:
+        side = OrderAction.BUY
+
+    return Order(product, OrderType.MARKET, side, quantity, None)

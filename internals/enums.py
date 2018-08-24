@@ -1,9 +1,9 @@
 from enum import Enum
 
 
-class OrderSide(Enum):
-    BID = 1
-    ASK = 2
+class OrderAction(Enum):
+    BUY = 1
+    SELL = 2
 
 
 class OrderType(Enum):

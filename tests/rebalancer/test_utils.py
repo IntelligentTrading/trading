@@ -1,9 +1,11 @@
 import unittest
 from rebalancer.utils import get_mid_prices_from_orderbooks
 from rebalancer.utils import get_weights_from_resources
-from rebalancer.utils import dfs, topological_sort, bfs
+from rebalancer.utils import dfs, topological_sort, bfs, parse_market_orders
 from rebalancer.utils import get_price_estimates_from_orderbooks
 from internals.orderbook import OrderBook
+from internals.order import Order
+from internals.enums import OrderType, OrderAction
 from decimal import Decimal
 from collections import defaultdict
 import numpy as np
@@ -236,6 +238,62 @@ class UtilsTester(unittest.TestCase):
             'EOS': Decimal('1000') / Decimal('11')
         }
         self.assertDictAlmostEqual(correct_price_estimates, price_estimates)
+
+    def test_parse_market_orders(self):
+        products = ['BTC_USDT', 'ETH_USDT', 'LTC_USDT',
+                    'BNB_USDT', 'ETH_BTC', 'LTC_BTC', 'EOS_ETH', 'LTC_ETH']
+        price_estimates = {
+            'USDT': Decimal('1'),
+            'BNB': Decimal('10'),
+            'BTC': Decimal('10000'),
+            'ETH': Decimal('10000') / Decimal('11'),
+            'LTC': Decimal('1000') / Decimal('11'),
+            'EOS': Decimal('1000') / Decimal('11')
+        }
+
+        pre_order = ('BTC', 'USDT', Decimal('10000'))
+        order = parse_market_orders(
+            pre_order, products, price_estimates, 'USDT')
+        correct_order = Order('BTC_USDT', OrderType.MARKET,
+                              OrderAction.SELL, Decimal('1'))
+
+        self.assertEqual(order.product, correct_order.product)
+        self.assertEqual(order._action, correct_order._action)
+        self.assertEqual(order._type, correct_order._type)
+        self.assertEqual(order._quantity, correct_order._quantity)
+
+        pre_order = ('USDT', 'BTC', Decimal('10000'))
+        order = parse_market_orders(
+            pre_order, products, price_estimates, 'USDT')
+        correct_order = Order('BTC_USDT', OrderType.MARKET,
+                              OrderAction.BUY, Decimal('1'))
+
+        self.assertEqual(order.product, correct_order.product)
+        self.assertEqual(order._action, correct_order._action)
+        self.assertEqual(order._type, correct_order._type)
+        self.assertEqual(order._quantity, correct_order._quantity)
+
+        pre_order = ('BNB', 'BTC', Decimal('10000'))
+        order = parse_market_orders(
+            pre_order, products + ['BNB_BTC'], price_estimates, 'USDT')
+        correct_order = Order('BNB_BTC', OrderType.MARKET,
+                              OrderAction.SELL, Decimal('1000'))
+
+        self.assertEqual(order.product, correct_order.product)
+        self.assertEqual(order._action, correct_order._action)
+        self.assertEqual(order._type, correct_order._type)
+        self.assertEqual(order._quantity, correct_order._quantity)
+
+        pre_order = ('ETH', 'EOS', Decimal('10000'))
+        order = parse_market_orders(
+            pre_order, products, price_estimates, 'USDT')
+        correct_order = Order('EOS_ETH', OrderType.MARKET,
+                              OrderAction.BUY, Decimal('110'))
+
+        self.assertEqual(order.product, correct_order.product)
+        self.assertEqual(order._action, correct_order._action)
+        self.assertEqual(order._type, correct_order._type)
+        self.assertEqual(order._quantity, correct_order._quantity)
 
     def assertDictAlmostEqual(self, d1, d2, *args, **kwargs):
         self.assertEqual(set(d1.keys()), set(d2.keys()))
