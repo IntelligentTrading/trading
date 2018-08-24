@@ -3,6 +3,8 @@ from rebalancer.utils import get_mid_prices_from_orderbooks
 from rebalancer.utils import get_weights_from_resources
 from rebalancer.utils import dfs, topological_sort, bfs, parse_market_orders
 from rebalancer.utils import get_price_estimates_from_orderbooks
+from rebalancer.utils import spread_to_fee, get_total_fee
+from rebalancer.utils import get_prices_from_orderbooks
 from internals.orderbook import OrderBook
 from internals.order import Order
 from internals.enums import OrderType, OrderAction
@@ -238,6 +240,53 @@ class UtilsTester(unittest.TestCase):
             'EOS': Decimal('1000') / Decimal('11')
         }
         self.assertDictAlmostEqual(correct_price_estimates, price_estimates)
+
+    def test_get_prices_from_orderbooks(self):
+        orderbook_BTC_USDT = OrderBook(
+            'BTC_USDT', [Decimal('10000'), Decimal('5000')])
+
+        orderbook_ETH_BTC = OrderBook(
+            'ETH_BTC', [Decimal('0.004'), Decimal('0.003')])
+
+        orderbook_ADA_BTC = OrderBook(
+            'ADA_BTC', [Decimal('0.00002'), Decimal('0.00001')])
+
+        orderbook_EOS_ETH = OrderBook(
+            'EOS_ETH', [Decimal('0.02'), Decimal('0.01')])
+
+        orderbooks = [orderbook_EOS_ETH, orderbook_ADA_BTC,
+                      orderbook_ETH_BTC, orderbook_BTC_USDT]
+
+        prices = get_prices_from_orderbooks(orderbooks)
+        correct_prices = {
+            ('BTC', 'USDT'): Decimal('5000'),
+            ('ETH', 'BTC'): Decimal('0.003'),
+            ('ADA', 'BTC'): Decimal('0.00001'),
+            ('EOS', 'ETH'): Decimal('0.01'),
+            ('USDT', 'BTC'): Decimal('0.0001'),
+            ('BTC', 'ETH'): Decimal('250'),
+            ('BTC', 'ADA'): Decimal('50000'),
+            ('ETH', 'EOS'): Decimal('50')
+        }
+        self.assertDictEqual(prices, correct_prices)
+
+    def test_spread_to_fee(self):
+        fee = Decimal('0.001')
+        orderbook = OrderBook(
+            'BTC_USDT',
+            [Decimal('1000') * (1 - fee), Decimal('1000') / (1 - fee)])
+        self.assertEqual(spread_to_fee(orderbook), fee)
+
+    def test_get_total_fee(self):
+        fee = Decimal('0.001')
+        spread_fee = Decimal('0.0015')
+        price = Decimal('1000')
+        wall_ask = price / (1 - spread_fee)
+        wall_bid = price * (1 - spread_fee)
+        orderbook = OrderBook('BTC_USDT', [wall_ask, wall_bid])
+        correct_fee = 1 - (1 - spread_fee) * (1 - fee)
+        self.assertAlmostEqual(get_total_fee(
+            spread_to_fee(orderbook), fee), correct_fee, places=18)
 
     def test_parse_market_orders(self):
         products = ['BTC_USDT', 'ETH_USDT', 'LTC_USDT',

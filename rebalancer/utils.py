@@ -7,11 +7,13 @@ from internals.enums import OrderType, OrderAction
 
 
 def rebalance_orders(initial_weights: Dict[str, Decimal],
-                     final_weights: Dict[str, Decimal]) -> (
+                     final_weights: Dict[str, Decimal],
+                     fee: Dict[str, Decimal]) -> (
         List[Tuple[str, str, Decimal]]):
     """
     :param initial_weights: weights before rebalance
     :param final_weights: weights after rebalance
+    :param fee: dict from product to fee
     :return: List of orders, each order is list of length 3,
                              currency from, currency to, quantity_in_base
                                                 (might be product, quantity)
@@ -132,6 +134,20 @@ def bfs(graph: Dict[str, Dict[str, Decimal]], start: str)-> Dict[str, Decimal]:
         i += 1
 
     return dists
+
+
+def spread_to_fee(orderbook):
+    wall_ask = orderbook.get_wall_ask()
+    wall_bid = orderbook.get_wall_bid()
+    return 1 - (wall_bid / wall_ask).sqrt()
+
+
+def get_total_fee(*fees):
+    p = 1
+    for fee in fees:
+        p *= 1 - fee
+
+    return 1 - p
 
 
 def parse_market_orders(order: Tuple[str, str, Decimal],

@@ -43,9 +43,15 @@ class Binance(Exchange):
     def get_orderbooks(self, products=None, depth: int=1):
         if depth != 1:
             raise NotImplementedError
+        if products is not None:
+            products = set(products)
         return self.get_orderbooks_of_depth1(products)
 
     def get_orderbooks_of_depth1(self, products):
+        """
+        get all orderbooks with depth equal to 1, then filter out those,
+        which symbol is not in specified products
+        """
         books_list = self.client.get_orderbook_tickers()
         orderbooks = []
         for book in books_list:
@@ -59,6 +65,12 @@ class Binance(Exchange):
                           'bid': Decimal(book['bidPrice'])})
             orderbooks.append(orderbook)
         return orderbooks
+
+    def get_taker_fee(self, product):
+        return Decimal('0.001')
+
+    def through_trade_currencies(self):
+        return {'BTC', 'BNB', 'ETH', 'USDT'}
 
     def get_resources(self):
         return {asset_balance['asset']: Decimal(asset_balance['free'])
