@@ -79,7 +79,7 @@ def get_weights_from_resources(
         resources: Dict[str, Decimal],
         prices: Dict[str, Decimal]) -> Dict[str, Decimal]:
     resources_in_base = {
-        currency: resources[currency] * prices[currency]
+        currency: resources[currency] * prices.get(currency, Decimal('0'))
         for currency in resources
     }
     portfolio_value = sum(resources_in_base.values())
@@ -94,7 +94,7 @@ def get_portfolio_value_from_resources(
         resources: Dict[str, Decimal],
         prices: Dict[str, Decimal]) -> Decimal:
     resources_in_base = {
-        currency: resources[currency] * prices[currency]
+        currency: resources[currency] * prices.get(currency, Decimal('0'))
         for currency in resources
     }
     portfolio_value = sum(resources_in_base.values())

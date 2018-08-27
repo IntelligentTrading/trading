@@ -38,6 +38,8 @@ class Binance(Exchange):
                 continue
             orderbook = OrderBook(
                 product, Decimal(price_symbol['price']))
+            if orderbook.get_wall_ask() <= Decimal('1e-8'):
+                continue
             orderbooks.append(orderbook)
         return orderbooks
 
@@ -64,6 +66,8 @@ class Binance(Exchange):
             orderbook = OrderBook(
                 product, {'ask': Decimal(book['askPrice']),
                           'bid': Decimal(book['bidPrice'])})
+            if orderbook.get_wall_ask() <= Decimal('1e-8'):
+                continue
             orderbooks.append(orderbook)
         return orderbooks
 
@@ -87,13 +91,13 @@ class Binance(Exchange):
         symbol = ''.join(order.product.split('_'))
         side = order._action.name
         quantity = order._quantity
-        newOrderRespType = 'FULL'
+        new_order_resp_type = 'FULL'
         price = order._price
         try:
             resp = self.client.create_order(
                 side=side, symbol=symbol,
                 quantity=quantity,
-                newOrderRespType=newOrderRespType,
+                newOrderRespType=new_order_resp_type,
                 price=price.to_eng_string(),
                 type=self.client.ORDER_TYPE_LIMIT_MAKER)
         except BinanceAPIException as e:
@@ -108,11 +112,11 @@ class Binance(Exchange):
         symbol = ''.join(order.product.split('_'))
         side = order._action.name
         quantity = order._quantity
-        newOrderRespType = 'FULL'
+        new_order_resp_type = 'FULL'
         try:
-            resp = self.client.order_market(side=side, symbol=symbol,
-                                            quantity=quantity,
-                                            newOrderRespType=newOrderRespType)
+            resp = self.client.order_market(
+                side=side, symbol=symbol,
+                quantity=quantity, newOrderRespType=new_order_resp_type)
         except BinanceAPIException as e:
             return e
 
@@ -137,8 +141,8 @@ class Binance(Exchange):
             "commission_BNB": Decimal("11.66365227")
         }
         """
-        orderId = resp['orderId']
-        clientOrderId = resp['clientOrderId']
+        order_id = resp['orderId']
+        client_order_id = resp['clientOrderId']
         executed_quantity = Decimal(resp['executedQty'])
         fills = resp['fills']
         value = sum(Decimal(fill['qty']) * Decimal(fill['price'])
@@ -153,8 +157,8 @@ class Binance(Exchange):
 
         ret = {
             'symbol': resp['symbol'],
-            'orderId': orderId,
-            'clientOrderId': clientOrderId,
+            'orderId': order_id,
+            'clientOrderId': client_order_id,
             'executed_quantity': executed_quantity,
             'mean_price': mean_price}
 

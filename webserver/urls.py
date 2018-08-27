@@ -17,9 +17,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-from webserver.views import HealthCkeckView
+from webserver.views import HealthCkeckView, PortfolioView
 
 urlpatterns = [
     path('healthcheck/', HealthCkeckView.as_view()),
+    path('api/portfolio/', PortfolioView.as_view()),
     path('admin/', admin.site.urls),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

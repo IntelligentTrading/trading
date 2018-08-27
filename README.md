@@ -43,7 +43,7 @@ This system is proposed to run on a Python/Django/Postgres stack, hosted on Hero
 `/api/portfolio` with data in request body
 
 ```
-GET /api/portfolio
+POST /api/portfolio
 {
         "api_key": "...",
 	"binance": {
