@@ -189,7 +189,7 @@ class FakeExchange(Binance):
         return self.fees[product]
 
     def place_market_order(self, order, price_estimates):
-        order = self._validate_market_order(order, price_estimates)
+        order = self._validate_order(order, price_estimates)
         if order is None:
             return
         self.orders.append(order)

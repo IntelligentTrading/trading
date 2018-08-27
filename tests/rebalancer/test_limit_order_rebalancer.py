@@ -2,4 +2,5 @@ import unittest
 
 
 class LimitOrderRebalancerTester(unittest.TestCase):
-    pass
+    def test_limit_order_rebalance(self):
+        pass

@@ -1,5 +1,6 @@
 import unittest
-from internals.utils import binance_product_to_currencies
+from internals.utils import binance_product_to_currencies, quantize
+from decimal import Decimal
 
 
 class UtilsTester(unittest.TestCase):
@@ -22,3 +23,13 @@ class UtilsTester(unittest.TestCase):
             self.assertEqual(len(derived_pair), 2)
             self.assertEqual(real_pair[0], derived_pair[0])
             self.assertEqual(real_pair[1], derived_pair[1])
+
+    def test_quantize(self):
+        x = Decimal('100.0001')
+        precision = Decimal('0.01')
+        self.assertEqual(quantize(x, precision, down=True), Decimal('100'))
+        self.assertEqual(quantize(x, precision, down=False), Decimal('100.01'))
+
+        precision = Decimal('0.01000000')
+        self.assertEqual(quantize(x, precision, down=True), Decimal('100'))
+        self.assertEqual(quantize(x, precision, down=False), Decimal('100.01'))

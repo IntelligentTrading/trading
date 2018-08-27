@@ -4,6 +4,7 @@ from internals.utils import binance_product_to_currencies
 from decimal import Decimal
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
+from internals.utils import quantize
 
 
 class Binance(Exchange):
@@ -69,6 +70,9 @@ class Binance(Exchange):
     def get_taker_fee(self, product):
         return Decimal('0.001')
 
+    def get_maker_fee(self, product):
+        return Decimal('0.001')
+
     def through_trade_currencies(self):
         return {'BTC', 'BNB', 'ETH', 'USDT'}
 
@@ -76,7 +80,45 @@ class Binance(Exchange):
         return {asset_balance['asset']: Decimal(asset_balance['free'])
                 for asset_balance in self.client.get_account()['balances']}
 
+    def place_limit_order(self, order):
+        order = self._validate_order(order)
+        if order is None:
+            return
+        symbol = ''.join(order.product.split('_'))
+        side = order._action.name
+        quantity = order._quantity
+        newOrderRespType = 'FULL'
+        price = order._price
+        try:
+            resp = self.client.create_order(
+                side=side, symbol=symbol,
+                quantity=quantity,
+                newOrderRespType=newOrderRespType,
+                price=price.to_eng_string(),
+                type=self.client.ORDER_TYPE_LIMIT_MAKER)
+        except BinanceAPIException as e:
+            return e
+
+        return self.parse_order_response(resp)
+
     def place_market_order(self, order, price_estimates):
+        order = self._validate_order(order, price_estimates)
+        if order is None:
+            return
+        symbol = ''.join(order.product.split('_'))
+        side = order._action.name
+        quantity = order._quantity
+        newOrderRespType = 'FULL'
+        try:
+            resp = self.client.order_market(side=side, symbol=symbol,
+                                            quantity=quantity,
+                                            newOrderRespType=newOrderRespType)
+        except BinanceAPIException as e:
+            return e
+
+        return self.parse_order_response(resp)
+
+    def parse_order_response(self, resp):
         """
         place market order
         uses price estimates to check min notional and resources for buy orders
@@ -95,23 +137,9 @@ class Binance(Exchange):
             "commission_BNB": Decimal("11.66365227")
         }
         """
-        order = self._validate_market_order(order, price_estimates)
-        if order is None:
-            return
-        symbol = ''.join(order.product.split('_'))
-        side = order.side.name
-        quantity = order.quantity
-        newOrderRespType = 'FULL'
-        try:
-            resp = self.client.order_market(side=side, symbol=symbol,
-                                            quantity=quantity,
-                                            newOrderRespType=newOrderRespType)
-        except BinanceAPIException as e:
-            return
-
         orderId = resp['orderId']
         clientOrderId = resp['clientOrderId']
-        executed_quantity = Decimal(resp['executed_quantity'])
+        executed_quantity = Decimal(resp['executedQty'])
         fills = resp['fills']
         value = sum(Decimal(fill['qty']) * Decimal(fill['price'])
                     for fill in fills)
@@ -124,6 +152,7 @@ class Binance(Exchange):
             commissions[fill['commissionAsset']] += Decimal(fill['commission'])
 
         ret = {
+            'symbol': resp['symbol'],
             'orderId': orderId,
             'clientOrderId': clientOrderId,
             'executed_quantity': executed_quantity,
@@ -134,7 +163,7 @@ class Binance(Exchange):
 
         return ret
 
-    def _validate_market_order(self, order, price_estimates):
+    def _validate_order(self, order, price_estimates=None):
         resources = self.get_resources()
         symbol = ''.join(order.product.split('_'))
         filt = self.filters[symbol]
@@ -143,25 +172,100 @@ class Binance(Exchange):
             return
         if order._quantity > filt['max_order_size']:
             order._quantity = filt['max_order_size']
-        order._quantity = order._quantity // filt['order_step'] * (
-            filt['order_step'])
+        order._quantity = quantize(order._quantity, filt['order_step'])
 
-        value = (price_estimates[filt['commodity']] /
-                 price_estimates[filt['base']]) * order._quantity
+        if order._price is not None:
+            if order._price < filt['min_price']:
+                return
+            if order._price > filt['max_price']:
+                return
+            if order._price % filt['price_step'] != 0:
+                order._price = quantize(order._price, filt['price_step'],
+                                        down=order._action.name == 'BUY')
+
+        if order._price is None:
+            value = (price_estimates[filt['commodity']] /
+                     price_estimates[filt['base']]) * order._quantity
+        else:
+            value = order._price * order._quantity
         if value < filt['min_notional']:
             return
 
         if order._action.name == 'SELL':
             if resources[filt['commodity']] < order._quantity:
                 order._quantity = resources[filt['commodity']]
-                order = self._validate_market_order(order, price_estimates)
+                order = self._validate_order(order, price_estimates)
         else:
-            price_commodity = price_estimates[filt['commodity']]
-            price_base = price_estimates[filt['base']]
-            price = price_commodity / price_base
+            if order._price is None:
+                price_commodity = price_estimates[filt['commodity']]
+                price_base = price_estimates[filt['base']]
+                price = price_commodity / price_base
+            else:
+                price = order._price
             if resources[filt['base']] < order._quantity * price:
                 order._quantity = resources[filt['base']] / (
                     price * Decimal('1.0001'))
                 # any number
-                order = self._validate_market_order(order, price_estimates)
+                order = self._validate_order(order, price_estimates)
         return order
+
+    def get_order(self, **params):
+        """
+        symbol or product: str
+        order_id or orderId: int
+        client_order_id  or origClientOrderId: str, optional
+        :return: similiar to example
+            {
+                "symbol": "LTCBTC",
+                "orderId": 1,
+                "clientOrderId": "myOrder1",
+                "price": "0.1",
+                "origQty": "1.0",
+                "executedQty": "0.0",
+                "status": "NEW",
+                "timeInForce": "GTC",
+                "type": "LIMIT",
+                "side": "BUY",
+                "stopPrice": "0.0",
+                "icebergQty": "0.0",
+                "time": 1499827319559
+            }
+        """
+        d = self._parse_params(params)
+        resp = self.client.get_order(**d)
+        resp.update({'orig_quantity': resp['origQty'],
+                     'executed_quantity': resp['executedQty']})
+        return resp
+
+    def cancel_limit_order(self, **params):
+        """
+        symbol or product: str
+        order_id or orderId: int
+        client_order_id  or origClientOrderId: str, optional
+        :return: similiar to example
+            {
+                "symbol": "LTCBTC",
+                "origClientOrderId": "myOrder1",
+                "orderId": 1,
+                "clientOrderId": "cancelMyOrder1"
+            }
+        """
+        d = self._parse_params(params)
+        return self.client.cancel_order(**d)
+
+    def _parse_params(self, params):
+        d = {}
+        assert 'product' in params or 'symbol' in params
+        if 'product' in params:
+            d['symbol'] = ''.join(params['product'].split('_'))
+        else:
+            d['symbol'] = params['symbol']
+
+        if 'order_id' in params or 'orderId' in params:
+            d['orderId'] = params.get('order_id') or params['orderId']
+        if 'origClientOrderId' in params or 'orig_client_order_id' in params:
+            d['origClientOrderId'] = params.get(
+                'orig_client_order_id') or params['origClientOrderId']
+        assert d.get('origClientOrderId') is not None or d.get(
+            'orderId') is not None
+        return d

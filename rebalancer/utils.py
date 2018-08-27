@@ -6,6 +6,7 @@ from internals.order import Order
 from internals.enums import OrderType, OrderAction
 from networkx import digraph
 from networkx import flow
+from exchange.exchange import Exchange
 
 
 def rebalance_orders(initial_weights: Dict[str, Decimal],
@@ -66,10 +67,10 @@ def create_flow_digraph(initial_weights: Dict[str, Decimal],
     for (c1, c2), fee in total_fees.items():
         graph.add_edge(c1, c2,
                        capacity=float('inf'),
-                       weight=-int(float((1 - fee).log10()) * inv_precision))
+                       weight=-int(float(fee.log10()) * inv_precision))
         graph.add_edge(c2, c1,
                        capacity=float('inf'),
-                       weight=-int(float((1 - fee).log10()) * inv_precision))
+                       weight=-int(float(fee.log10()) * inv_precision))
 
     return graph
 
@@ -200,10 +201,13 @@ def get_total_fee(*fees):
     return 1 - p
 
 
-def parse_market_orders(order: Tuple[str, str, Decimal],
-                        products: List[str],
-                        price_estimates: Dict[str, Decimal],
-                        base: str):
+def parse_order(order: Tuple[str, str, Decimal],
+                products: List[str],
+                price_estimates: Dict[str, Decimal],
+                base: str,
+                _type: OrderType=OrderType.MARKET,
+                price: Decimal=None):
+    assert (price is None) == (_type == OrderType.MARKET)
     product = [product for product in products if product == '_'.join(
         order[:2]) or product == '_'.join(order[:2][::-1])][0]
 
@@ -216,4 +220,38 @@ def parse_market_orders(order: Tuple[str, str, Decimal],
     else:
         side = OrderAction.BUY
 
-    return Order(product, OrderType.MARKET, side, quantity, None)
+    return Order(product, _type, side, quantity, price)
+
+
+def pre_rebalance(exchange: Exchange,
+                  weights: Dict[str, Decimal],
+                  base: str='USDT'):
+    resources = exchange.get_resources()
+    currencies = (exchange.through_trade_currencies() |
+                  set(list(resources.keys())) | set(list(weights.keys())))
+    all_possible_products = ['_'.join([i, j])
+                             for i in currencies
+                             for j in currencies]
+
+    orderbooks = exchange.get_orderbooks(all_possible_products)
+    # getting all ordebrooks and filtering out orderbooks,
+    # that use other currencies
+    products = set(orderbook.product for orderbook in orderbooks)
+
+    price_estimates = get_price_estimates_from_orderbooks(orderbooks, base)
+    initial_weights = get_weights_from_resources(
+        resources, price_estimates)
+    portfolio_value = get_portfolio_value_from_resources(
+        resources, price_estimates)
+    orderbooks = {orderbook.product: orderbook
+                  for orderbook in orderbooks}
+
+    fees = {product: exchange.get_taker_fee(product)
+            for product in products}
+
+    spread_fees = {product: spread_to_fee(orderbook)
+                   for product, orderbook in orderbooks.items()}
+
+    return (products, orderbooks,
+            price_estimates, portfolio_value, initial_weights,
+            fees, spread_fees)

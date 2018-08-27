@@ -17,7 +17,6 @@ class OrderBook:
             assert len(orderbook_from_market) == 2
             self.wall_ask = max(orderbook_from_market)
             self.wall_bid = min(orderbook_from_market)
-        # TODO: parse orderbook from market
 
     def get_mid_market_price(self) -> Decimal:
         assert self.wall_ask is not None and self.wall_bid is not None

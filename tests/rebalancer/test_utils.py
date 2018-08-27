@@ -1,7 +1,7 @@
 import unittest
 from rebalancer.utils import get_mid_prices_from_orderbooks
 from rebalancer.utils import get_weights_from_resources
-from rebalancer.utils import dfs, topological_sort, bfs, parse_market_orders
+from rebalancer.utils import dfs, topological_sort, bfs, parse_order
 from rebalancer.utils import get_price_estimates_from_orderbooks
 from rebalancer.utils import spread_to_fee, get_total_fee
 from rebalancer.utils import rebalance_orders
@@ -23,8 +23,8 @@ class UtilsTester(unittest.TestCase):
                          'ETH': Decimal('0.2'),
                          'USDT': Decimal('0.3')}
 
-        fees = {'BTC_USDT': Decimal('0.002'), 'BTC_ETH': Decimal(
-            '0.0018'), 'ETH_USDT': Decimal('0.0019')}
+        fees = {'BTC_USDT': 1 - Decimal('0.002'), 'BTC_ETH': 1 - Decimal(
+            '0.0018'), 'ETH_USDT': 1 - Decimal('0.0019')}
 
         orders = rebalance_orders(initial_weights, final_weights, fees)
         orders = [order for order in orders if order[2] > Decimal('1e-9')]
@@ -32,8 +32,8 @@ class UtilsTester(unittest.TestCase):
         self.assertEqual(orders[0], ('ETH', 'BTC', Decimal('0.1')))
         self.assertEqual(orders[1], ('USDT', 'BTC', Decimal('0.2')))
 
-        fees = {'BTC_USDT': Decimal('0.002'), 'BTC_ETH': Decimal(
-            '0.0008'), 'ETH_USDT': Decimal('0.0009')}
+        fees = {'BTC_USDT': 1 - Decimal('0.002'), 'BTC_ETH': 1 - Decimal(
+            '0.0008'), 'ETH_USDT': 1 - Decimal('0.0009')}
 
         orders = rebalance_orders(initial_weights, final_weights, fees)
         orders = [order for order in orders if order[2] > Decimal('1e-9')]
@@ -238,6 +238,27 @@ class UtilsTester(unittest.TestCase):
         }
         self.assertDictAlmostEqual(dists, correct_dists)
 
+        graph = defaultdict(dict, {
+            'USDT': {'BTC': np.log(10000),
+                     'ETH': np.log(1000),
+                     'BNB': np.log(10)},
+            'BTC': {'USDT': -np.log(10000),
+                    'ETH': -np.log(11),
+                    'LTC': -np.log(110)},
+            'ETH': {'EOS': -np.log(10), 'LTC': -np.log(10)},
+            'LTC': {'ETH': np.log(10)}
+        })
+        dists = bfs(graph, 'USDT')
+        correct_dists = {
+            'USDT': np.log(1),
+            'BNB': np.log(10),
+            'BTC': np.log(10000),
+            'ETH': np.log(10000) - np.log(11),
+            'LTC': np.log(1000) - np.log(11),
+            'EOS': np.log(1000) - np.log(11)
+        }
+        self.assertDictAlmostEqual(dists, correct_dists)
+
     def test_get_price_estimates_from_orderbooks(self):
 
         orderbook_BTC_USDT = OrderBook('BTC_USDT', Decimal('10000'))
@@ -285,7 +306,7 @@ class UtilsTester(unittest.TestCase):
         self.assertAlmostEqual(get_total_fee(
             spread_to_fee(orderbook), fee), correct_fee, places=18)
 
-    def test_parse_market_orders(self):
+    def test_parse_order(self):
         products = ['BTC_USDT', 'ETH_USDT', 'LTC_USDT',
                     'BNB_USDT', 'ETH_BTC', 'LTC_BTC', 'EOS_ETH', 'LTC_ETH']
         price_estimates = {
@@ -297,7 +318,7 @@ class UtilsTester(unittest.TestCase):
             'EOS': Decimal('1000') / Decimal('11')
         }
         pre_order = ('BTC', 'USDT', Decimal('10000'))
-        order = parse_market_orders(
+        order = parse_order(
             pre_order, products, price_estimates, 'USDT')
         correct_order = Order('BTC_USDT', OrderType.MARKET,
                               OrderAction.SELL, Decimal('1'))
@@ -308,7 +329,7 @@ class UtilsTester(unittest.TestCase):
         self.assertEqual(order._quantity, correct_order._quantity)
 
         pre_order = ('USDT', 'BTC', Decimal('10000'))
-        order = parse_market_orders(
+        order = parse_order(
             pre_order, products, price_estimates, 'USDT')
         correct_order = Order('BTC_USDT', OrderType.MARKET,
                               OrderAction.BUY, Decimal('1'))
@@ -319,7 +340,7 @@ class UtilsTester(unittest.TestCase):
         self.assertEqual(order._quantity, correct_order._quantity)
 
         pre_order = ('BNB', 'BTC', Decimal('10000'))
-        order = parse_market_orders(
+        order = parse_order(
             pre_order, products + ['BNB_BTC'], price_estimates, 'USDT')
         correct_order = Order('BNB_BTC', OrderType.MARKET,
                               OrderAction.SELL, Decimal('1000'))
@@ -330,7 +351,7 @@ class UtilsTester(unittest.TestCase):
         self.assertEqual(order._quantity, correct_order._quantity)
 
         pre_order = ('ETH', 'EOS', Decimal('10000'))
-        order = parse_market_orders(
+        order = parse_order(
             pre_order, products, price_estimates, 'USDT')
         correct_order = Order('EOS_ETH', OrderType.MARKET,
                               OrderAction.BUY, Decimal('110'))
@@ -339,6 +360,29 @@ class UtilsTester(unittest.TestCase):
         self.assertEqual(order._action, correct_order._action)
         self.assertEqual(order._type, correct_order._type)
         self.assertEqual(order._quantity, correct_order._quantity)
+
+        pre_order = ('ETH', 'EOS', Decimal('10000'))
+        order = parse_order(
+            pre_order, products, price_estimates, 'USDT',
+            OrderType.LIMIT, Decimal('1000'))
+
+        correct_order = Order('EOS_ETH', OrderType.LIMIT,
+                              OrderAction.BUY, Decimal('110'),
+                              Decimal('1000'))
+
+        self.assertEqual(order.product, correct_order.product)
+        self.assertEqual(order._action, correct_order._action)
+        self.assertEqual(order._type, correct_order._type)
+        self.assertEqual(order._quantity, correct_order._quantity)
+        self.assertEqual(order._price, correct_order._price)
+
+        with self.assertRaises(AssertionError):
+            parse_order(pre_order, products, price_estimates, 'USDT',
+                        OrderType.LIMIT)
+
+        with self.assertRaises(AssertionError):
+            parse_order(pre_order, products, price_estimates, 'USDT',
+                        OrderType.MARKET, Decimal('1000'))
 
     def assertDictAlmostEqual(self, d1, d2, *args, **kwargs):
         self.assertEqual(set(d1.keys()), set(d2.keys()))
