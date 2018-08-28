@@ -5,6 +5,7 @@ from decimal import Decimal, ROUND_DOWN
 from django.http import JsonResponse, HttpResponse
 from django.views import View
 
+from webserver.decorators import with_valid_api_key
 from exchange import get_exchange_by_name
 from rebalancer.utils import get_price_estimates_from_orderbooks, \
     get_weights_from_resources, get_portfolio_value_from_resources
@@ -17,6 +18,7 @@ class HealthCkeckView(View):
 
 class PortfolioView(View):
 
+    @with_valid_api_key
     def post(self, request):
 
         data = json.loads(request.body)

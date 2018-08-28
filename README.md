@@ -43,12 +43,6 @@ This system is proposed to run on a Python/Django/Postgres stack, hosted on Hero
 `/api/portfolio` with data in request body
 
 ```
-curl -H "Content-Type: application/json" 
--d '{"binance": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' 
--X POST localhost:8000/api/portfolio/
-```
-
-```
 POST /api/portfolio
 {
         "api_key": "...",
@@ -58,6 +52,12 @@ POST /api/portfolio
 	}
 }
 ```
+
+`
+curl -H "Content-Type: application/json" 
+-d '{"binance": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' 
+-X POST localhost:8000/api/portfolio/
+`
 
 In request data, includes json data for Exchange account access (binance only for v.1)
 
@@ -94,22 +94,22 @@ allocations_sum = sum([float([a["portion"]) for a in data["binance"]["allocation
 assert allocations_sum <= 1 and allocations_sum > 0.99
 ```
 
-```
+`
 curl -H "Content-Type: application/json" 
 -d '{"binance": {"secret_key": "secret", "api_key": "wrong key"}, "api_key": "aaaaa"}' 
 -X POST localhost:8000/api/portfolio/
-```
+`
 
 ```
 RESPONSE 404 NOT FOUND
 { "error": "exchange API keys invalid" }
 ```
 
-```
+`
 curl -H "Content-Type: application/json" 
 -d '{"bitfinex": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' 
 -X POST localhost:8000/api/portfolio/
-```
+`
 
 ```
 RESPONSE 418 I'M A TEAPOT
