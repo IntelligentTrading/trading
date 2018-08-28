@@ -144,7 +144,7 @@ class BinanceTester(unittest.TestCase):
             self.assertDictEqual(Binance._parse_params(None, param),
                                  correct_params)
 
-    def test_parse_order_response(self):
+    def test_parse_market_order_response(self):
         resp = {
             "symbol": "BTCUSDT",
             "orderId": 28,
@@ -190,7 +190,7 @@ class BinanceTester(unittest.TestCase):
                 }
             ]
         }
-        ret = Binance.parse_order_response(None, resp)
+        ret = Binance.parse_market_order_response(None, resp)
         correct_parsed_response = {
             "orderId": 28,
             "clientOrderId": "6gCrw2kRUAF9CvJDGP16IP",

@@ -103,26 +103,13 @@ class Binance(Exchange):
         except BinanceAPIException as e:
             return e
 
-        return self.parse_order_response(resp)
+        order_id = resp['orderId']
+        client_order_id = resp['clientOrderId']
+        return {'symbol': resp['symbol'],
+                'orderId': order_id,
+                'clientOrderId': client_order_id}
 
     def place_market_order(self, order, price_estimates):
-        order = self._validate_order(order, price_estimates)
-        if order is None:
-            return
-        symbol = ''.join(order.product.split('_'))
-        side = order._action.name
-        quantity = order._quantity
-        new_order_resp_type = 'FULL'
-        try:
-            resp = self.client.order_market(
-                side=side, symbol=symbol,
-                quantity=quantity, newOrderRespType=new_order_resp_type)
-        except BinanceAPIException as e:
-            return e
-
-        return self.parse_order_response(resp)
-
-    def parse_order_response(self, resp):
         """
         place market order
         uses price estimates to check min notional and resources for buy orders
@@ -141,6 +128,23 @@ class Binance(Exchange):
             "commission_BNB": Decimal("11.66365227")
         }
         """
+        order = self._validate_order(order, price_estimates)
+        if order is None:
+            return
+        symbol = ''.join(order.product.split('_'))
+        side = order._action.name
+        quantity = order._quantity
+        newOrderRespType = 'FULL'
+        try:
+            resp = self.client.order_market(side=side, symbol=symbol,
+                                            quantity=quantity,
+                                            newOrderRespType=newOrderRespType)
+        except BinanceAPIException as e:
+            return e
+
+        return self.parse_market_order_response(resp)
+
+    def parse_market_order_response(self, resp):
         order_id = resp['orderId']
         client_order_id = resp['clientOrderId']
         executed_quantity = Decimal(resp['executedQty'])
