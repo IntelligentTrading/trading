@@ -10,3 +10,4 @@ django==2.1
 gunicorn==19.9.0
 dj-database-url==0.5
 psycopg2-binary==2.7.5
+jsonfield==2.0
