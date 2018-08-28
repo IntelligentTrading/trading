@@ -54,8 +54,8 @@ POST /api/portfolio
 ```
 
 `
-curl -H "Content-Type: application/json" 
--d '{"binance": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' 
+curl -H "Content-Type: application/json" \
+-d '{"binance": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' \
 -X POST localhost:8000/api/portfolio/
 `
 
@@ -95,8 +95,8 @@ assert allocations_sum <= 1 and allocations_sum > 0.99
 ```
 
 `
-curl -H "Content-Type: application/json" 
--d '{"binance": {"secret_key": "secret", "api_key": "wrong key"}, "api_key": "aaaaa"}' 
+curl -H "Content-Type: application/json" \
+-d '{"binance": {"secret_key": "secret", "api_key": "wrong key"}, "api_key": "aaaaa"}' \
 -X POST localhost:8000/api/portfolio/
 `
 
@@ -106,8 +106,8 @@ RESPONSE 404 NOT FOUND
 ```
 
 `
-curl -H "Content-Type: application/json" 
--d '{"bitfinex": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' 
+curl -H "Content-Type: application/json" \
+-d '{"bitfinex": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' \
 -X POST localhost:8000/api/portfolio/
 `
 
