@@ -10,6 +10,7 @@ default: ${venv}
 
 ${venv}: requirements.txt
 	python${PYTHON_VERSION} -m venv ${venv}
+	. ${venv}/bin/activate; pip install --upgrade pip Cython==0.28 --cache .tmp/
 	. ${venv}/bin/activate; pip install -r requirements.txt --cache .tmp/
 	@echo Success, to activate the development environment, run:
 	@echo "\tsource .venv/${venv_name}/bin/activate"
