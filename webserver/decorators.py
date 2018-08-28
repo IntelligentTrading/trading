@@ -1,8 +1,7 @@
-import ujson as json
 from functools import wraps
 
-from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
+from django.core.exceptions import PermissionDenied
 
 from webserver.models import User
 
@@ -11,12 +10,12 @@ from webserver.models import User
 def with_valid_api_key(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
-        api_key = json.loads(request.body).get("api_key", None)
+        if 'api_key' not in request.data:
+            raise PermissionDenied
+        api_key = request.data.pop('api_key')
         try:
             request.user = User.objects.get(api_key=api_key)
         except User.DoesNotExist:
-            return HttpResponse(
-                json.dumps({"status": "Not authorized"}),
-                content_type="application/json", status=401)
+            raise PermissionDenied
         return view_func(request, *args, **kwargs)
     return _wrapped_view
