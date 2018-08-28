@@ -8,8 +8,13 @@ from decimal import Decimal
 def market_order_rebalance(exchange: Exchange,
                            weights: Dict[str, Decimal],
                            base: str='USDT'):
-    (products, orderbooks, price_estimates, portfolio_value, initial_weights,
-     fees, spread_fees) = pre_rebalance(exchange, weights, base)
+    (products, resources, orderbooks, price_estimates,
+     portfolio_value, initial_weights,
+     spread_fees) = pre_rebalance(exchange, weights, base)
+
+    fees = {product: exchange.get_taker_fee(product)
+            for product in products}
+
     total_fees = {product: 1 - get_total_fee(fees[product],
                                              spread_fees[product])
                   for product in products}

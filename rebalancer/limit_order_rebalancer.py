@@ -1,7 +1,8 @@
 from decimal import Decimal
-from typing import Dict
+from typing import Dict, List
 import time
 
+from internals.order import Order
 from internals.enums import OrderType, OrderAction
 from exchange.exchange import Exchange
 from rebalancer.utils import rebalance_orders, get_total_fee, \
@@ -13,8 +14,13 @@ def limit_order_rebalance(exchange: Exchange,
                           retries: int = 10,
                           time_delta: int = 30,
                           base: str='USDT'):
-    (products, orderbooks, price_estimates, portfolio_value, initial_weights,
-     fees, spread_fees) = pre_rebalance(exchange, weights, base)
+    (products, resources, orderbooks, price_estimates,
+     portfolio_value, initial_weights,
+     spread_fees) = pre_rebalance(exchange, weights, base)
+
+    fees = {product: exchange.get_maker_fee(product)
+            for product in products}
+
     reverse_spread_fees = {product: 1 - 1 / (1 - spread_fee)
                            for product, spread_fee in spread_fees.items()}
 
@@ -25,16 +31,23 @@ def limit_order_rebalance(exchange: Exchange,
     total_fees = {product: (1 - get_total_fee(
         fees[product], reverse_spread_fees[product])) / limit_pseudo_fee
         for product in products}
-
     orders = rebalance_orders(
         initial_weights, weights, total_fees)
-
     orders = [(*order[:2], order[2] * portfolio_value) for order in orders]
     orders = [parse_order(order, products,
                           price_estimates, base,
                           OrderType.LIMIT, Decimal())
               for order in orders]
+    return limit_order_rebalance_with_orders(exchange, resources, products,
+                                             orders, retries, time_delta)
 
+
+def limit_order_rebalance_with_orders(exchange: Exchange,
+                                      resources: Dict[str, Decimal],
+                                      products: List[str],
+                                      orders: List[Order],
+                                      retries: int,
+                                      time_delta: int):
     number_of_trials = {}
     rets = []
     while len(number_of_trials) == 0 or all(
@@ -58,16 +71,18 @@ def limit_order_rebalance(exchange: Exchange,
         for order in orders:
             currency_commodity, currency_base = order.product.split('_')
             orderbook = orderbooks[order.product]
-            # TODO: check resources
-            if (order._action == OrderAction.SELL and
-                    currency_commodity not in currencies_free):
-                # if selling commodity, which we don't have yet
-                continue
-            elif (order._action == OrderAction.BUY and
-                    currency_base not in currencies_free):
-                # if buying commodity, for which we don't have base yet
-                continue
             order._price = orderbook.get_mid_market_price()
+            if order._action == OrderAction.SELL:
+                if (currency_commodity not in currencies_free and
+                        resources[currency_commodity] < order._quantity):
+                    # if selling commodity, which we don't have yet
+                    continue
+            else:
+                if (currency_base not in currencies_free and
+                        resources[currency_base] <
+                        order._quantity * order._price):
+                    # if buying commodity, for which we don't have base yet
+                    continue
             order_response = exchange.place_limit_order(order)
             if order_response is not None:
                 order_response.update({'order': order})

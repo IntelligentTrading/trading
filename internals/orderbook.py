@@ -7,7 +7,7 @@ class OrderBook:
         self.product = product
         self.wall_ask = None
         self.wall_bid = None
-        if type(orderbook_from_market) in [float, Decimal]:
+        if type(orderbook_from_market) in [int, float, Decimal]:
             self.wall_ask = orderbook_from_market
             self.wall_bid = orderbook_from_market
         if type(orderbook_from_market) is dict:

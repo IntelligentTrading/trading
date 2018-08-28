@@ -246,12 +246,8 @@ def pre_rebalance(exchange: Exchange,
     orderbooks = {orderbook.product: orderbook
                   for orderbook in orderbooks}
 
-    fees = {product: exchange.get_taker_fee(product)
-            for product in products}
-
     spread_fees = {product: spread_to_fee(orderbook)
                    for product, orderbook in orderbooks.items()}
 
-    return (products, orderbooks,
-            price_estimates, portfolio_value, initial_weights,
-            fees, spread_fees)
+    return (products, resources, orderbooks, price_estimates,
+            portfolio_value, initial_weights, spread_fees)
