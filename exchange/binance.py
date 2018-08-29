@@ -14,13 +14,13 @@ class Binance(Exchange):
         filters = self.client.get_exchange_info()['symbols']
         self.filters = {
             filt['symbol']: {
-                'min_order_size': filt['filters'][1]['minQty'],
-                'max_order_size': filt['filters'][1]['maxQty'],
-                'order_step': filt['filters'][1]['stepSize'],
-                'min_notional': filt['filters'][2]['minNotional'],
-                'min_price': filt['filters'][0]['minPrice'],
-                'max_price': filt['filters'][0]['maxPrice'],
-                'price_step': filt['filters'][0]['tickSize'],
+                'min_order_size': Decimal(filt['filters'][1]['minQty']),
+                'max_order_size': Decimal(filt['filters'][1]['maxQty']),
+                'order_step': Decimal(filt['filters'][1]['stepSize']),
+                'min_notional': Decimal(filt['filters'][2]['minNotional']),
+                'min_price': Decimal(filt['filters'][0]['minPrice']),
+                'max_price': Decimal(filt['filters'][0]['maxPrice']),
+                'price_step': Decimal(filt['filters'][0]['tickSize']),
                 'base': filt['baseAsset'],
                 'commodity': filt['quoteAsset'],
             }
