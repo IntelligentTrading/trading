@@ -33,8 +33,7 @@ def market_order_rebalance(exchange: Exchange,
         for i in range(10):
             ret_order = exchange.place_market_order(order, price_estimates)
             if not isinstance(ret_order, Exception):
+                ret_orders.append(ret_order)
                 break
-
-        ret_orders.append(ret_order)
 
     return ret_orders

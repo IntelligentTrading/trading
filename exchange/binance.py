@@ -21,8 +21,8 @@ class Binance(Exchange):
                 'min_price': Decimal(filt['filters'][0]['minPrice']),
                 'max_price': Decimal(filt['filters'][0]['maxPrice']),
                 'price_step': Decimal(filt['filters'][0]['tickSize']),
-                'base': filt['baseAsset'],
-                'commodity': filt['quoteAsset'],
+                'base': filt['quoteAsset'],
+                'commodity': filt['baseAsset'],
             }
             for filt in filters
         }
