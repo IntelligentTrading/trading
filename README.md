@@ -120,6 +120,12 @@ RESPONSE 418 I'M A TEAPOT
 ## Binance Exchange Set Portfolio New State
 This defines a new target allocatoin for a portfolio. The difference between this target allocatoin and the current state could range from a very small to a very large differenc. Given a set of target alloctions, a portfolio might aim to "cash out" 150 coins and move 100% of assets to USDT, or vis versa.
 
+`
+curl -H "Content-Type: application/json" 
+-d '{"binance": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCH", "portion": 0.3599}]}, "api_key": "aaaaa"}' 
+-X PUT localhost:8000/api/portfolio/
+`
+
 ```
 PUT /api/portfolio
 {
@@ -150,14 +156,37 @@ RESPONSE 202 Accepted
 
 `retry_after` informs the client that it can check back after some period of time if they want to check on the status of the processing. This is simply an estimate of when the system expects to be nearly done processing trades.
 
+`
+curl -H "Content-Type: application/json" 
+-d '{"binance": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCH", "portion": 0.5}]}, "api_key": "aaaaa"}' 
+-X PUT localhost:8000/api/portfolio/
+`
+
 ```
 RESPONSE 400 Bad Request
 {"error": "portions add to more than 1.0"}
 ```
 
+`
+curl -H "Content-Type: application/json" 
+-d '{"binance": {"secret_key": "secret", "api_key": "wrong key", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCH", "portion": 0.5}]}, "api_key": "aaaaa"}' 
+-X PUT localhost:8000/api/portfolio/
+`
+
 ```
 RESPONSE 404 NOT FOUND
 { "error": "exchange API keys invalid" }
+```
+
+`
+curl -H "Content-Type: application/json" 
+-d '{"coinbase-pro": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCH", "portion": 0.5}]}, "api_key": "aaaaa"}' 
+-X PUT localhost:8000/api/portfolio/
+`
+
+```
+RESPONSE 418 I'M A TEAPOT
+{ "error": "only binance exchange support available at this time" }
 ```
 
 ## Binance Exchange Check Portfolio Processing

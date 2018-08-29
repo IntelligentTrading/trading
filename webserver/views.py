@@ -1,21 +1,26 @@
-import binance
-import ujson as json
 from decimal import Decimal, ROUND_DOWN
 
-from django.http import JsonResponse, HttpResponse
-
-from webserver.decorators import with_valid_api_key
-from exchange import get_exchange_by_name
+from webserver.decorators import with_valid_api_key, \
+    initialize_exchange
 from rebalancer.utils import get_price_estimates_from_orderbooks, \
     get_weights_from_resources, get_portfolio_value_from_resources
-
+from rebalancer.market_order_rebalancer import market_order_rebalance
+from rebalancer.limit_order_rebalancer import limit_order_rebalance
 from rest_framework.views import APIView
 from rest_framework.parsers import JSONParser
+from rest_framework.response import Response
+from .api_exceptions import WeightsSumGreaterThanOne
+
+
+REBALANCING_ALGORITHM = {
+    'MARKET': market_order_rebalance,
+    'LIMIT': limit_order_rebalance
+}
 
 
 class HealthCkeckView(APIView):
     def get(self, request):
-        return JsonResponse({"status": "ok"})
+        return Response({"status": "ok"})
 
 
 class PortfolioView(APIView):
@@ -23,31 +28,41 @@ class PortfolioView(APIView):
     parser_classes = (JSONParser,)
 
     @with_valid_api_key
-    def post(self, request):
-
+    @initialize_exchange
+    def post(self, request, exchange, params):
         response = {}
-        for name, keys in request.data.items():
+        response[params['name']] = get_portfolio(exchange)
+        return Response(response)
 
-            if name.upper() != 'BINANCE':
-                return HttpResponse(
-                    json.dumps(
-                        {"error": "only binance exchange support "
-                                  "available at this time"}),
-                    content_type="application/json", status=418)
+    @with_valid_api_key
+    @initialize_exchange
+    def put(self, request, exchange, params):
+        response = {}
+        allocations = params['allocations']
+        total_weight = sum(Decimal(allocation['portion'])
+                           for allocation in allocations)
+        if total_weight > 1:
+            raise WeightsSumGreaterThanOne
 
-            exchange_class = get_exchange_by_name(name)
-            api_key = keys['api_key']
-            api_secret = keys['secret_key']
+        found_BTC = False
+        for allocation in allocations:
+            if allocation['coin'] != 'BTC':
+                continue
+            allocation['portion'] += Decimal('1') - total_weight
+            found_BTC = True
 
-            try:
-                exchange = exchange_class(api_key, api_secret)
-                response[name] = get_portfolio(exchange)
-            except binance.exceptions.BinanceAPIException:
-                return HttpResponse(
-                    json.dumps({"error": "exchange API keys invalid"}),
-                    content_type="application/json", status=404)
+        if not found_BTC:
+            allocations += [{'coin': 'BTC',
+                             'portion': Decimal('1') - total_weight}]
 
-        return JsonResponse(response)
+        weights = {allocation['coin']: allocation['portion']
+                   for allocation in allocations}
+
+        ret = REBALANCING_ALGORITHM[params.get('type', 'market').upper()](
+            exchange, weights)
+        response[params['name']] = ret
+
+        return Response(response)
 
 
 def get_portfolio(exchange):
