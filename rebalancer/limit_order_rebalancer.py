@@ -11,7 +11,7 @@ from rebalancer.utils import rebalance_orders, get_total_fee, \
 
 def limit_order_rebalance(exchange: Exchange,
                           weights: Dict[str, Decimal],
-                          retries: int = 10,
+                          max_retries: int = 10,
                           time_delta: int = 30,
                           base: str='USDT'):
     (products, resources, orderbooks, price_estimates,
@@ -39,19 +39,19 @@ def limit_order_rebalance(exchange: Exchange,
                           OrderType.LIMIT, Decimal())
               for order in orders]
     return limit_order_rebalance_with_orders(exchange, resources, products,
-                                             orders, retries, time_delta)
+                                             orders, max_retries, time_delta)
 
 
 def limit_order_rebalance_with_orders(exchange: Exchange,
                                       resources: Dict[str, Decimal],
                                       products: List[str],
                                       orders: List[Order],
-                                      retries: int,
+                                      max_retries: int,
                                       time_delta: int):
     number_of_trials = {}
     rets = []
     while len(number_of_trials) == 0 or all(
-            v <= retries for v in number_of_trials.values()):
+            v <= max_retries for v in number_of_trials.values()):
         orderbooks = exchange.get_orderbooks(products)
         currencies_from = set()
         currencies_to = set()
