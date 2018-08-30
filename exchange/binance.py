@@ -217,7 +217,7 @@ class Binance(Exchange):
                 order = self._validate_order(order, price_estimates)
         return order
 
-    def get_order(self, **params):
+    def get_order(self, params):
         """
         symbol or product: str
         order_id or orderId: int
@@ -229,7 +229,9 @@ class Binance(Exchange):
                 "clientOrderId": "myOrder1",
                 "price": "0.1",
                 "origQty": "1.0",
+                "orig_quantity": "1.0",
                 "executedQty": "0.0",
+                "executed_quantity": "0.0",
                 "status": "NEW",
                 "timeInForce": "GTC",
                 "type": "LIMIT",
@@ -245,7 +247,7 @@ class Binance(Exchange):
                      'executed_quantity': resp['executedQty']})
         return resp
 
-    def cancel_limit_order(self, **params):
+    def cancel_limit_order(self, params):
         """
         symbol or product: str
         order_id or orderId: int
