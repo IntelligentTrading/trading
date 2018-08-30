@@ -50,8 +50,8 @@ def limit_order_rebalance_with_orders(exchange: Exchange,
                                       time_delta: int):
     number_of_trials = {}
     rets = []
-    while len(number_of_trials) == 0 or all(
-            v <= max_retries for v in number_of_trials.values()):
+    while len(orders) and (len(number_of_trials) == 0 or all(
+            v <= max_retries for v in number_of_trials.values())):
         orderbooks = exchange.get_orderbooks(products)
         currencies_from = set()
         currencies_to = set()
