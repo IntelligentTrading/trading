@@ -77,11 +77,8 @@ class CoinbasePro(Exchange):
         # price
         if order._price is not None:
             if order._price % filt['price_step'] > 0:
-                if order._action.name == 'SELL':
-                    order._price = quantize(order._price, filt['price_step'],
-                                            down=False)
-                else:
-                    order._price = quantize(order._price, filt['price_step'])
+                order._price = quantize(order._price, filt['price_step'],
+                                        down=(order._action.name == 'BUY'))
 
         # resources
         if order._action.name == 'SELL':
