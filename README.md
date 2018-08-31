@@ -191,7 +191,18 @@ RESPONSE 418 I'M A TEAPOT
 
 ## Binance Exchange Check Portfolio Processing
 
-`GET /api/portfolio_process/<processing_id>`
+```
+POST /api/portfolio_process/<processing_id>
+{
+    "api_key": "..."
+}
+```
+
+`
+curl -H "Content-Type: application/json" 
+-d '{"api_key": "key"}' 
+-X POST localhost:5000/api/portfolio_process/a5bf73ecbbaf
+`
 
 ```
 RESPONSE 202 Accepted

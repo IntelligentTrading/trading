@@ -1,4 +1,4 @@
-import tests.webserver.init_django  # noqa
+import init_django  # noqa
 import unittest
 from decimal import Decimal
 
