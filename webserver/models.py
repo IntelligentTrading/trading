@@ -1,5 +1,4 @@
 from django.db import models
-import jsonfield
 
 
 class User(models.Model):
@@ -9,4 +8,10 @@ class User(models.Model):
 
 class Statistics(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    data = jsonfield.JSONField()
+    mid_market_price = models.FloatField()
+    average_exec_price = models.FloatField()
+    volume = models.FloatField()
+    pair = models.CharField(max_length=10)
+    fee = models.FloatField()
+    action = models.CharField(max_length=4, choices=[("buy", "buy"),
+                                                     ("sell", "sell")])

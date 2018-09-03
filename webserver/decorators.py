@@ -1,11 +1,10 @@
+import binance
 from functools import wraps
-
-from webserver.models import User
 from django.utils.decorators import method_decorator
 from rest_framework.exceptions import PermissionDenied
 
 from exchange import get_exchange_by_name
-import binance
+from webserver.models import User
 from webserver.api_exceptions import MustProvideSingleExchange
 from webserver.api_exceptions import ExchangeNotSupported
 from webserver.api_exceptions import MustProvideBinanceCredentials

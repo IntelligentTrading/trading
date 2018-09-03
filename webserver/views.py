@@ -5,14 +5,11 @@ from rest_framework.views import APIView
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, PermissionDenied
+
 from webserver.api_exceptions import WeightsSumGreaterThanOne
-
-
-from webserver.utils import get_portfolio
-
-
 from webserver.decorators import with_valid_api_key, \
     initialize_exchange
+from webserver.utils import get_portfolio
 
 
 class HealthCkeckView(APIView):
