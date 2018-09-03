@@ -1,8 +1,18 @@
 from rebalancer.utils import rebalance_orders, topological_sort, \
     get_total_fee, parse_order, pre_rebalance
-from typing import Dict
+from typing import Dict, List
 from exchange.exchange import Exchange
 from decimal import Decimal
+from webserver.models import Statistics
+
+
+def market_order_rebalance_and_save(user,
+                                    exchange: Exchange,
+                                    weights: Dict[str, Decimal],
+                                    base: str='USDT'):
+    rets = market_order_rebalance(exchange, weights, base)
+    summaries = create_order_statistics_objects(rets, user)
+    Statistics.objects.bulk_create(summaries)
 
 
 def market_order_rebalance(exchange: Exchange,
@@ -35,5 +45,38 @@ def market_order_rebalance(exchange: Exchange,
             if not isinstance(ret_order, Exception):
                 ret_orders.append(ret_order)
                 break
+        if ret_order is None:
+            continue
+        ret_order['mid_market_price'] = orderbooks[
+            order.product].get_mid_market_price()
 
     return ret_orders
+
+
+def create_order_statistics_objects(order_responses, user) -> List[Statistics]:
+    """
+    :param order_responses: responses from market
+    :return: Statistics objects
+    """
+    statistics = []
+    for order_response in order_responses:
+        if order_response is None:
+            continue
+        _, base = order_response['product'].split('_')
+        price_estimates = order_response['price_estimates']
+        fee = 0
+        for k, v in order_response.items():
+            if k.startswith('commission_'):
+                fee += price_estimates[k[len('commission_'):]] * v
+        fee /= price_estimates[base]
+        statistic = Statistics(
+            user=user,
+            mid_market_price=float(order_response['mid_market_price']),
+            average_exec_price=float(order_response['mean_price']),
+            volume=float(order_response['mean_price'] *
+                         order_response['executed_quantity'] + fee),
+            pair=order_response['product'],
+            fee=float(fee),
+            action=order_response['side'].lower())
+        statistics.append(statistic)
+    return statistics

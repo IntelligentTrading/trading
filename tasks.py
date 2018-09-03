@@ -4,7 +4,7 @@ import time
 import celery
 
 from rebalancer.limit_order_rebalancer import limit_order_rebalance
-from rebalancer.market_order_rebalancer import market_order_rebalance
+from rebalancer.market_order_rebalancer import market_order_rebalance_and_save
 from webserver.decorators import initialize_exchange
 from webserver.utils import get_portfolio
 
@@ -19,7 +19,7 @@ app.conf.update(broker_url=os.environ['REDIS_URL'],
 
 
 REBALANCING_ALGORITHM = {
-    'MARKET': market_order_rebalance,
+    'MARKET': market_order_rebalance_and_save,
     'LIMIT': limit_order_rebalance
 }
 
@@ -41,7 +41,7 @@ def rebalance_task(self, request, api_key, weights):
         )
 
         REBALANCING_ALGORITHM[params.get('type', 'market').upper()](
-            exchange, weights)
+            api_key, exchange, weights)
 
         portfolio = get_portfolio(exchange)
         delta_t = (time.time() - start_time) * 1000

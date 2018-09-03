@@ -42,7 +42,7 @@ class LimitOrderRebalancerTester(unittest.TestCase):
         }
 
         fees['BTC_USDT'] = Decimal('0.0005')
-        limit_order_rebalance(exchange, weights)
+        limit_order_rebalance('', exchange, weights)
         (arg_exchange, arg_resources, arg_products,
          arg_orders, _, _), _ = function.call_args
 
@@ -69,7 +69,7 @@ class LimitOrderRebalancerTester(unittest.TestCase):
             ('LTC_USDT', OrderAction.BUY, Decimal('100')),
             ('LTC_ETH', OrderAction.BUY, Decimal('200'))
         ])
-        limit_order_rebalance(exchange, weights)
+        limit_order_rebalance('', exchange, weights)
         (arg_exchange, arg_resources, arg_products,
          arg_orders, _, _), _ = function.call_args
 

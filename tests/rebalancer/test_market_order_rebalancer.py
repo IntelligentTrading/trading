@@ -1,11 +1,18 @@
+import init_django  # noqa
+import uuid
+import pytz
+from datetime import datetime
 import unittest
+from unittest.mock import patch
 from decimal import Decimal
 
 from internals.orderbook import OrderBook
 from exchange.binance import Binance
 from internals.enums import OrderType, OrderAction
-
+from webserver.models import User, Statistics
 from rebalancer.market_order_rebalancer import market_order_rebalance
+from rebalancer.market_order_rebalancer import create_order_statistics_objects
+from rebalancer.market_order_rebalancer import market_order_rebalance_and_save
 
 
 class MarketOrderRebalancerTester(unittest.TestCase):
@@ -159,6 +166,82 @@ class MarketOrderRebalancerTester(unittest.TestCase):
         self.assertAlmostEqual(parsed_orders[0][2], Decimal('3'), places=5)
         self.assertEqual(parsed_orders[1][:2], ('USDT', 'ETH'))
         self.assertAlmostEqual(parsed_orders[1][2], Decimal('2'), places=5)
+
+    def test_create_order_statistics_objects(self):
+        user = User(api_key='key')
+        responses = [
+            {
+                'symbol': 'BTCUSDT',
+                'orderId': 'binance_order_id',
+                'clientOrderId': 'binance_client_order_id',
+                'executed_quantity': Decimal('10'),
+                'mean_price': Decimal('9000'),
+                'side': 'SELL',
+                'commission_USDT': Decimal('100'),
+                'commission_BNB': Decimal('10'),
+                'product': 'BTC_USDT',
+                'price_estimates': {
+                    'BTC': Decimal('10000'),
+                    'BNB': Decimal('10'),
+                    'USDT': Decimal('1')
+                },
+                'mid_market_price': Decimal('10000')
+            },  # BINANCE
+            {
+                'symbol': 'BTC-USDT',
+                'orderId': 'cbpro_order_id',
+                'executed_quantity': Decimal('10'),
+                'mean_price': Decimal('9000'),
+                'side': 'sell',
+                'commission_USDT': Decimal('200'),
+                'product': 'BTC_USDT',
+                'price_estimates': {
+                    'BTC': Decimal('10000'),
+                    'USDT': Decimal('1'),
+                    'LTC': Decimal('100')
+                },
+                'mid_market_price': Decimal('10000')
+            }
+        ]
+        statistics = create_order_statistics_objects(responses, user)
+        for statistic in statistics:
+            self.assertEqual(statistic.user, user)
+            self.assertEqual(statistic.mid_market_price, 10000)
+            self.assertEqual(statistic.average_exec_price, 9000)
+            self.assertEqual(statistic.volume, 90200)
+            self.assertEqual(statistic.pair, 'BTC_USDT')
+            self.assertEqual(statistic.fee, 200)
+            self.assertEqual(statistic.action, 'sell')
+
+    @patch('rebalancer.market_order_rebalancer'
+           '.market_order_rebalance')
+    @patch('rebalancer.market_order_rebalancer'
+           '.create_order_statistics_objects')
+    def test_market_order_rebalance_and_save(self, f2, f1):
+        api_key = ''.join(str(uuid.uuid4()).split('-'))
+        user = User.objects.create(api_key=api_key,
+                                   date_created=datetime.now(tz=pytz.utc))
+        user.save()
+        f1.return_value = []
+        f2.return_value = [Statistics(user=user,
+                                      mid_market_price=10000,
+                                      average_exec_price=9000,
+                                      pair='BTC_USDT',
+                                      volume=90200,
+                                      fee=200,
+                                      action='sell')]
+        c1 = Statistics.objects.count()
+        market_order_rebalance_and_save(user, None, None)
+        c2 = Statistics.objects.count()
+        self.assertEqual(c1 + 1, c2)
+        statistics = Statistics.objects.latest('user')
+        self.assertEqual(statistics.user, user)
+        self.assertEqual(statistics.mid_market_price, 10000)
+        self.assertEqual(statistics.average_exec_price, 9000)
+        self.assertEqual(statistics.volume, 90200)
+        self.assertEqual(statistics.pair, 'BTC_USDT')
+        self.assertEqual(statistics.fee, 200)
+        self.assertEqual(statistics.action, 'sell')
 
 
 def parse_order(order):

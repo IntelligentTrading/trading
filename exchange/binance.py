@@ -142,7 +142,11 @@ class Binance(Exchange):
         except BinanceAPIException as e:
             return e
 
-        return self.parse_market_order_response(resp)
+        parsed_response = self.parse_market_order_response(resp)
+        parsed_response['price_estimates'] = price_estimates
+        parsed_response['product'] = '_'.join(binance_product_to_currencies(
+            parsed_response['symbol']))
+        return parsed_response
 
     def parse_market_order_response(self, resp):
         order_id = resp['orderId']
@@ -164,7 +168,8 @@ class Binance(Exchange):
             'orderId': order_id,
             'clientOrderId': client_order_id,
             'executed_quantity': executed_quantity,
-            'mean_price': mean_price}
+            'mean_price': mean_price,
+            'side': resp['side']}
 
         for asset, fee in commissions.items():
             ret['commission_' + asset] = fee

@@ -9,7 +9,8 @@ from rebalancer.utils import rebalance_orders, get_total_fee, \
     parse_order, pre_rebalance
 
 
-def limit_order_rebalance(exchange: Exchange,
+def limit_order_rebalance(user,
+                          exchange: Exchange,
                           weights: Dict[str, Decimal],
                           max_retries: int = 10,
                           time_delta: int = 30,

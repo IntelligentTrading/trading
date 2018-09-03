@@ -198,7 +198,8 @@ class BinanceTester(unittest.TestCase):
             "mean_price": Decimal("3998.30000000"),
             "commission_USDT": Decimal("15.98800000"),
             "commission_BNB": Decimal("23.99500000"),
-            "symbol": "BTCUSDT"
+            "symbol": "BTCUSDT",
+            "side": "SELL"
         }
 
         self.assertDictEqual(correct_parsed_response, ret)

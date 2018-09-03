@@ -47,8 +47,12 @@ class CoinbasePro(Exchange):
         symbol = order.product.replace('_', '-')
         resp = self.client.place_market_order(
             symbol, order._action.name.lower(), size=order._quantity)
-        # TODO:
-        return self.parse_market_order_response(resp)
+
+        parsed_response = self.parse_market_order_response(resp)
+        parsed_response['price_estimates'] = price_estimates
+        parsed_response['product'] = parsed_response['symbol'].replace(
+            '-', '_')
+        return parsed_response
 
     def place_limit_order(self, order: Order):
         order = self.validate_order(order)
@@ -106,10 +110,15 @@ class CoinbasePro(Exchange):
         total_size = [Decimal(fill['size']) for fill in fills]
         total_money = [Decimal(fill['size']) * Decimal(fill['price'])
                        for fill in fills]
+        fee_asset = response['product_id'].split('-')[-1]
+        product = response['product_id'].replace('-', '_')
+        fee = self.get_taker_fee(product) * total_money
         return {'symbol': response['product_id'],
                 'orderId': response['id'],
                 'executed_quantity': Decimal(response['executed_value']),
-                'mean_price': total_money / total_size}
+                'mean_price': total_money / total_size,
+                'commission_' + fee_asset: fee,
+                'side': response['side']}
 
     def cancel_limit_order(self, response):
         order_id = response['order_id']
