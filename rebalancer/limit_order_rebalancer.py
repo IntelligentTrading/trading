@@ -85,12 +85,11 @@ def limit_order_rebalance_with_orders(exchange: Exchange,
                     # if buying commodity, for which we don't have base yet
                     continue
             order_response = exchange.place_limit_order(order)
-            if order_response is not None:
+            if order_response is None:
+                orders_to_remove.append(order)
+            elif not isinstance(order_response, Exception):
                 order_response.update({'order': order})
                 order_responses.append(order_response)
-            else:
-                if not isinstance(order_response, Exception):
-                    orders_to_remove.append(order)
 
         for order in orders_to_remove:
             orders.remove(order)

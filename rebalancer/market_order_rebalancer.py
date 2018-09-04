@@ -45,7 +45,7 @@ def market_order_rebalance(exchange: Exchange,
             if not isinstance(ret_order, Exception):
                 ret_orders.append(ret_order)
                 break
-        if ret_order is None:
+        if ret_order is None or isinstance(ret_order, Exception):
             continue
         ret_order['mid_market_price'] = orderbooks[
             order.product].get_mid_market_price()
