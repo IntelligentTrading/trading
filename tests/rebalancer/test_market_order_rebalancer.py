@@ -242,6 +242,7 @@ class MarketOrderRebalancerTester(unittest.TestCase):
         self.assertEqual(statistics.pair, 'BTC_USDT')
         self.assertEqual(statistics.fee, 200)
         self.assertEqual(statistics.action, 'sell')
+        user.delete()
 
 
 def parse_order(order):
