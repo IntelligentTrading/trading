@@ -1,4 +1,5 @@
 import tasks
+import numpy as np
 from decimal import Decimal
 from celery.result import AsyncResult
 from rest_framework.views import APIView
@@ -9,6 +10,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied
 from webserver.api_exceptions import WeightsSumGreaterThanOne
 from webserver.decorators import with_valid_api_key, \
     initialize_exchange
+from webserver.models import Statistics
 from webserver.utils import get_portfolio
 
 
@@ -86,4 +88,20 @@ class ProcessingView(APIView):
 
         response = result.result
         response.pop('api_key')
+        return Response(response)
+
+
+class StatisticsView(APIView):
+    parser_classes = (JSONParser,)
+
+    @with_valid_api_key
+    def post(self, request):
+        stats = np.array(Statistics.objects.filter(
+            user=request.user).values_list('average_exec_price',
+                                           'mid_market_price'))
+        if len(stats) < 1:
+            obj = np.zeros(1)
+        else:
+            obj = np.abs(stats[:, 0] - stats[:, 1]) / stats[:, 1]
+        response = {'mean': np.mean(obj), 'std': np.std(obj)}
         return Response(response)

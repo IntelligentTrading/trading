@@ -276,15 +276,26 @@ RESPONSE 410 Gone OR 404 Not Found
 
 ## Getting Statistics about market order execution.
 
-`GET /market_order_statistics/`
-
 ```
-{ 
-	"market orders": {
-		"mean absoluate difference percent": 0.3
-	}
+POST /api/market_order_statistics/
+{
+    "api_key": "..."
 }
 ```
+
+`
+curl -H "Content-Type: application/json" 
+-d '{"api_key": "key"}' 
+-X POST localhost:5000/api/market_order_statistics/
+`
+
+```
+{
+    "mean": 0.1, 
+    "std": 0.01
+}
+```
+
 
 #### API key creation
 
