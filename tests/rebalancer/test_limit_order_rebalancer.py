@@ -42,9 +42,9 @@ class LimitOrderRebalancerTester(unittest.TestCase):
         }
 
         fees['BTC_USDT'] = Decimal('0.0005')
-        limit_order_rebalance('', exchange, weights)
-        (arg_exchange, arg_resources, arg_products,
-         arg_orders, _, _), _ = function.call_args
+        limit_order_rebalance(exchange, weights, '', '')
+        (_, arg_exchange, arg_resources, arg_products,
+         arg_orders, _, _, _), _ = function.call_args
 
         self.assertEqual(arg_exchange, exchange)
         self.assertDictEqual(resources, arg_resources)
@@ -69,9 +69,9 @@ class LimitOrderRebalancerTester(unittest.TestCase):
             ('LTC_USDT', OrderAction.BUY, Decimal('100')),
             ('LTC_ETH', OrderAction.BUY, Decimal('200'))
         ])
-        limit_order_rebalance('', exchange, weights)
-        (arg_exchange, arg_resources, arg_products,
-         arg_orders, _, _), _ = function.call_args
+        limit_order_rebalance(exchange, weights, '', '')
+        (_, arg_exchange, arg_resources, arg_products,
+         arg_orders, _, _, _), _ = function.call_args
 
         self.assertEqual(arg_exchange, exchange)
         self.assertDictEqual(resources, arg_resources)
@@ -85,7 +85,9 @@ class LimitOrderRebalancerTester(unittest.TestCase):
             self.assertEqual(order[1], correct_order[1])
             self.assertEqual(order[2], correct_order[2])
 
-    def test_limit_order_rebalance_with_orders(self):
+    @patch('rebalancer.limit_order_rebalancer.'
+           'limit_order_rebalance_retry_after_time_estimate')
+    def test_limit_order_rebalance_with_orders(self, f):
         CopyFakeExchange = type('CopyFakeExchange',
                                 FakeExchange.__bases__,
                                 dict(FakeExchange.__dict__))
@@ -143,15 +145,12 @@ class LimitOrderRebalancerTester(unittest.TestCase):
 
         orderbooks1 = [orderbook_LTC_ETH1, orderbook_ETH_BTC1,
                        orderbook_BTC_USDT1, orderbook_LTC_USDT1]
-        orderbooks1 = {ob.product: ob for ob in orderbooks1}
 
         orderbooks2 = [orderbook_LTC_ETH2, orderbook_ETH_BTC2,
                        orderbook_BTC_USDT2, orderbook_LTC_USDT2]
-        orderbooks2 = {ob.product: ob for ob in orderbooks2}
 
         orderbooks3 = [orderbook_LTC_ETH3, orderbook_ETH_BTC3,
                        orderbook_BTC_USDT3, orderbook_LTC_USDT3]
-        orderbooks3 = {ob.product: ob for ob in orderbooks3}
 
         orderbooks = [orderbooks1, orderbooks2, orderbooks3]
 
@@ -173,14 +172,16 @@ class LimitOrderRebalancerTester(unittest.TestCase):
             generator_to_function(infinite_generator(orderbooks1)), None, None,
             'orderbooks using generator')
 
-        exchange = CopyFakeExchange(order_id=0, orders={})
+        exchange = CopyFakeExchange(order_id=0, orders={}, resources={})
 
         orders_copy = [copy(order) for order in orders]
 
         # no retry, but all orders are executed
 
-        rets = limit_order_rebalance_with_orders(exchange, resources, products,
-                                                 orders_copy, 0, 0)
+        rets = limit_order_rebalance_with_orders(lambda *args: None,
+                                                 exchange, resources,
+                                                 products, orders_copy,
+                                                 0, 0, 'USDT')
 
         self.assertEqual(len(rets), 3)
 
@@ -221,14 +222,15 @@ class LimitOrderRebalancerTester(unittest.TestCase):
                 orderbooks_generator(orderbooks)), None, None,
             'orderbooks using generator')
 
-        exchange = CopyFakeExchange(order_id=0, orders={})
+        exchange = CopyFakeExchange(order_id=0, orders={}, resources={})
 
         orders_copy = [copy(order) for order in orders]
 
         # 1 retry available, so LTC is bought with USDT after 1 retry
 
-        rets = limit_order_rebalance_with_orders(exchange, resources, products,
-                                                 orders_copy, 1, 0)
+        rets = limit_order_rebalance_with_orders(lambda *args: None, exchange,
+                                                 resources, products,
+                                                 orders_copy, 1, 0, 'USDT')
 
         self.assertEqual(len(rets), 4)
 
@@ -272,14 +274,15 @@ class LimitOrderRebalancerTester(unittest.TestCase):
                 orderbooks_generator(orderbooks)), None, None,
             'orderbooks using generator')
 
-        exchange = CopyFakeExchange(order_id=0, orders={})
+        exchange = CopyFakeExchange(order_id=0, orders={}, resources={})
 
         orders_copy = [copy(order) for order in orders]
 
         # 0 retries, so LTC is not bought fully with USDT
 
-        rets = limit_order_rebalance_with_orders(exchange, resources, products,
-                                                 orders_copy, 0, 0)
+        rets = limit_order_rebalance_with_orders(lambda *args: None, exchange,
+                                                 resources, products,
+                                                 orders_copy, 0, 0, 'USDT')
 
         self.assertEqual(len(rets), 3)
 
@@ -327,14 +330,15 @@ class LimitOrderRebalancerTester(unittest.TestCase):
                 orderbooks_generator(orderbooks)), None, None,
             'orderbooks using generator')
 
-        exchange = CopyFakeExchange(order_id=0, orders={})
+        exchange = CopyFakeExchange(order_id=0, orders={}, resources={})
 
         orders_copy = [copy(order) for order in orders]
 
         # 0 retries, so BTC is not sold, but ETH is sold from first trial
 
-        rets = limit_order_rebalance_with_orders(exchange, resources, products,
-                                                 orders_copy, 0, 0)
+        rets = limit_order_rebalance_with_orders(lambda *arsg: None, exchange,
+                                                 resources, products,
+                                                 orders_copy, 0, 0, 'USDT')
 
         self.assertEqual(len(rets), 2)
 

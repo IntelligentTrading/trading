@@ -87,7 +87,8 @@ class MarketOrderRebalancerTester(unittest.TestCase):
                                 fees=fees,
                                 filters=filters)
 
-        market_order_rebalance(exchange, final_weights, base)
+        market_order_rebalance(exchange, final_weights,
+                               lambda *args: None, base)
 
         orders = exchange.orders
         for order in orders:
@@ -111,7 +112,8 @@ class MarketOrderRebalancerTester(unittest.TestCase):
                                 fees=fees2,
                                 filters=filters)
 
-        market_order_rebalance(exchange, final_weights, base)
+        market_order_rebalance(exchange, final_weights,
+                               lambda *args: None, base)
 
         orders = exchange.orders
         for order in orders:
@@ -154,7 +156,8 @@ class MarketOrderRebalancerTester(unittest.TestCase):
                                 fees=fees2,
                                 filters=filters)
 
-        market_order_rebalance(exchange, final_weights, base)
+        market_order_rebalance(exchange, final_weights,
+                               lambda *args: None, base)
 
         orders = exchange.orders
         for order in orders:
@@ -231,7 +234,7 @@ class MarketOrderRebalancerTester(unittest.TestCase):
                                       fee=200,
                                       action='sell')]
         c1 = Statistics.objects.count()
-        market_order_rebalance_and_save(user, None, None)
+        market_order_rebalance_and_save(None, None, user, lambda *args: None)
         c2 = Statistics.objects.count()
         self.assertEqual(c1 + 1, c2)
         statistics = Statistics.objects.latest('user')

@@ -7,6 +7,7 @@ from rebalancer.limit_order_rebalancer import limit_order_rebalance
 from rebalancer.market_order_rebalancer import market_order_rebalance_and_save
 from webserver.decorators import initialize_exchange
 from webserver.utils import get_portfolio
+from webserver.models import User
 
 
 app = celery.Celery('rebalance')
@@ -31,17 +32,21 @@ def rebalance_task(self, request, api_key, weights):
     def rebalance(this, request, exchange, params):
 
         start_time = time.time()
-        self.update_state(
-            None,
-            "STARTED",
-            {
-                "start_time": start_time,
-                "api_key": api_key
-            }
-        )
 
+        def update(time_estimate):
+            nonlocal self, api_key
+            self.update_state(
+                None,
+                "STARTED",
+                {
+                    "remaining_time_estimate": time_estimate,
+                    "api_key": api_key
+                }
+            )
+        update(12000)
+        user = User.objects.get(api_key=api_key)
         REBALANCING_ALGORITHM[params.get('type', 'market').upper()](
-            api_key, exchange, weights)
+            exchange, weights, user, update)
 
         portfolio = get_portfolio(exchange)
         delta_t = (time.time() - start_time) * 1000

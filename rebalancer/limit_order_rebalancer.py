@@ -1,7 +1,6 @@
 from decimal import Decimal
 from typing import Dict, List
 import time
-
 from internals.order import Order
 from internals.enums import OrderType, OrderAction
 from exchange.exchange import Exchange
@@ -9,9 +8,17 @@ from rebalancer.utils import rebalance_orders, get_total_fee, \
     parse_order, pre_rebalance
 
 
-def limit_order_rebalance(user,
-                          exchange: Exchange,
+def limit_order_rebalance_retry_after_time_estimate(number_of_trials,
+                                                    max_retries, time_delta):
+    mean_retries = sum(max_retries - v for v in number_of_trials.values()
+                       ) / len(number_of_trials)
+    needed_time = int(mean_retries * time_delta * 3) * 1000
+    return needed_time
+
+
+def limit_order_rebalance(exchange: Exchange,
                           weights: Dict[str, Decimal],
+                          user, update_function, *,
                           max_retries: int = 10,
                           time_delta: int = 30,
                           base: str='USDT'):
@@ -39,21 +46,29 @@ def limit_order_rebalance(user,
                           price_estimates, base,
                           OrderType.LIMIT, Decimal())
               for order in orders]
-    return limit_order_rebalance_with_orders(exchange, resources, products,
-                                             orders, max_retries, time_delta)
+    return limit_order_rebalance_with_orders(update_function, exchange,
+                                             resources, products,
+                                             orders, max_retries,
+                                             time_delta, base)
 
 
-def limit_order_rebalance_with_orders(exchange: Exchange,
+def limit_order_rebalance_with_orders(update_function,
+                                      exchange: Exchange,
                                       resources: Dict[str, Decimal],
                                       products: List[str],
                                       orders: List[Order],
                                       max_retries: int,
-                                      time_delta: int):
-    number_of_trials = {}
+                                      time_delta: int,
+                                      base: str):
+    number_of_trials = {order.product: 0 for order in orders}
     rets = []
-    while len(orders) and (len(number_of_trials) == 0 or all(
-            v <= max_retries for v in number_of_trials.values())):
+    while len(orders) and (all(
+        number_of_trials[order.product] <= max_retries
+            for order in orders)):
         orderbooks = exchange.get_orderbooks(products)
+        orderbooks = {ob.product: ob for ob in orderbooks}
+        update_function(limit_order_rebalance_retry_after_time_estimate(
+            number_of_trials, max_retries, time_delta))
         currencies_from = set()
         currencies_to = set()
         for order in orders:
@@ -86,15 +101,17 @@ def limit_order_rebalance_with_orders(exchange: Exchange,
                     continue
             order_response = exchange.place_limit_order(order)
             if order_response is None:
+                number_of_trials[order.product] = max_retries
                 orders_to_remove.append(order)
             elif not isinstance(order_response, Exception):
                 order_response.update({'order': order})
                 order_responses.append(order_response)
-
+            else:
+                number_of_trials[order.product] += 1
         for order in orders_to_remove:
+            number_of_trials[order.product] = max_retries
             orders.remove(order)
         time.sleep(time_delta)
-
         for order_response in order_responses:
             exchange.cancel_limit_order(order_response)
             resp = exchange.get_order(order_response)
@@ -105,11 +122,9 @@ def limit_order_rebalance_with_orders(exchange: Exchange,
                 order._quantity = Decimal(
                     resp['orig_quantity']) - Decimal(resp['executed_quantity'])
 
-                if order.product not in number_of_trials:
-                    number_of_trials[order.product] = 0
                 number_of_trials[order.product] += 1
-
             else:
+                number_of_trials[order.product] = max_retries
                 orders.remove(order)
 
     return rets

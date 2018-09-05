@@ -48,11 +48,9 @@ class PortfolioView(APIView):
         if not found_btc:
             allocations += [{'coin': 'BTC',
                              'portion': Decimal('1') - total_weight}]
-
         weights = {
             allocation['coin']: Decimal(allocation['portion']).to_eng_string()
             for allocation in allocations}
-
         result = tasks.rebalance_task.delay(request.data,
                                             request.user.api_key,
                                             weights)
@@ -83,7 +81,7 @@ class ProcessingView(APIView):
                 "status": "processing in progress",
                 "portfolio_processing_request":
                     "/api/portfolio_process/{}".format(result.id),
-                "retry_after": 12000
+                "retry_after": result.result['remaining_time_estimate']
             })
 
         response = result.result

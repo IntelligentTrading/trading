@@ -1,22 +1,24 @@
+from decimal import Decimal
+from typing import Dict, List
 from rebalancer.utils import rebalance_orders, topological_sort, \
     get_total_fee, parse_order, pre_rebalance
-from typing import Dict, List
 from exchange.exchange import Exchange
-from decimal import Decimal
 from webserver.models import Statistics
 
 
-def market_order_rebalance_and_save(user,
-                                    exchange: Exchange,
+def market_order_rebalance_and_save(exchange: Exchange,
                                     weights: Dict[str, Decimal],
+                                    user, update_function, *,
                                     base: str='USDT'):
-    rets = market_order_rebalance(exchange, weights, base)
+    rets = market_order_rebalance(exchange, weights, update_function,
+                                  base=base)
     summaries = create_order_statistics_objects(rets, user)
     Statistics.objects.bulk_create(summaries)
 
 
 def market_order_rebalance(exchange: Exchange,
                            weights: Dict[str, Decimal],
+                           update_function,
                            base: str='USDT'):
     (products, resources, orderbooks, price_estimates,
      portfolio_value, initial_weights,
@@ -37,7 +39,8 @@ def market_order_rebalance(exchange: Exchange,
                           price_estimates,
                           base)
               for order in orders]
-
+    l = len(orders)
+    update_function(l * 10000)
     ret_orders = []
     for order in orders:
         for i in range(10):
@@ -45,6 +48,8 @@ def market_order_rebalance(exchange: Exchange,
             if not isinstance(ret_order, Exception):
                 ret_orders.append(ret_order)
                 break
+        l -= 1
+        update_function(l * 10000)
         if ret_order is None or isinstance(ret_order, Exception):
             continue
         ret_order['mid_market_price'] = orderbooks[
