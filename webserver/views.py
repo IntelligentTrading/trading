@@ -39,10 +39,14 @@ class PortfolioView(APIView):
             raise WeightsSumGreaterThanOne
 
         found_btc = False
+        allocations = [{k: (v if k != "portion" else Decimal(v))
+                        for k, v in allocation.items()}
+                       for allocation in allocations]
         for allocation in allocations:
             if allocation['coin'] != 'BTC':
                 continue
-            allocation['portion'] += Decimal('1') - total_weight
+            allocation['portion'] = Decimal(
+                '1') - total_weight + Decimal(allocation['portion'])
             found_btc = True
 
         if not found_btc:

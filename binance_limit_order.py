@@ -19,7 +19,7 @@ def parse_args(*argument_array):
     create_parser = argparse.ArgumentParser(add_help=False)
     create_parser.set_defaults(q='create')
     create_parser.add_argument('--action', choices=['BUY', 'SELL'])
-    create_parser.add_argument('--quantity', type=int, default=1)
+    create_parser.add_argument('--quantity', type=str, default=1)
 
     cancel_parser = argparse.ArgumentParser(add_help=False)
     cancel_parser.set_defaults(q='cancel')
@@ -34,8 +34,9 @@ def parse_args(*argument_array):
     subparsers.add_parser('cancel', parents=[cancel_parser, base_parser])
     subparsers.add_parser(
         'get-open-orders', parents=[get_open_orders_parser, base_parser])
-
     args = parser.parse_args(*argument_array)
+    if hasattr(args, 'quantity'):
+        args.quantity = Decimal(args.quantity)
     args.symbol = args.symbol or ''.join(args.product.split('_'))
     return args
 

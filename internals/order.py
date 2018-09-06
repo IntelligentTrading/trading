@@ -13,3 +13,11 @@ class Order:
         if self._price is None:
             assert self._type is OrderType.MARKET, (
                 'price is required for limit orders')
+
+    def __str__(self):
+        s = ("<Order at {id}: [product={product}, type={type},"
+             " action={action}, quantity={quantity}, price={price}]".format(
+                 id=id(self), product=self.product, type=self._type,
+                 action=self._action, quantity=self._quantity,
+                 price=(self._price if self._price is not None else "None")))
+        return s

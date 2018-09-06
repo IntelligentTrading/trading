@@ -1,6 +1,7 @@
 import os
 import logging
 import webserver.settings
+import init_django  # noqa
 
 
 def get_level():

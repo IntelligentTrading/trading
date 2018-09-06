@@ -1,10 +1,12 @@
-from exchange.exchange import Exchange
-from internals.orderbook import OrderBook
-from internals.utils import binance_product_to_currencies
 from decimal import Decimal
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
+
+from logger import logger
+from exchange.exchange import Exchange
+from internals.utils import binance_product_to_currencies
 from internals.utils import quantize
+from internals.orderbook import OrderBook
 
 
 class Binance(Exchange):
@@ -82,10 +84,13 @@ class Binance(Exchange):
 
     def get_resources(self):
         return {asset_balance['asset']: Decimal(asset_balance['free'])
-                for asset_balance in self.client.get_account()['balances']}
+                for asset_balance in self.client.get_account()['balances']
+                if Decimal(asset_balance['free']) > Decimal(0)}
 
     def place_limit_order(self, order):
+        logger.info("creating limit order - {}".format(str(order)))
         order = self._validate_order(order)
+        logger.info("validated order - {}".format(str(order)))
         if order is None:
             return
         symbol = ''.join(order.product.split('_'))
@@ -105,6 +110,8 @@ class Binance(Exchange):
 
         order_id = resp['orderId']
         client_order_id = resp['clientOrderId']
+        logger.info("order response - {}".format(str(resp)))
+
         return {'symbol': resp['symbol'],
                 'orderId': order_id,
                 'clientOrderId': client_order_id}
@@ -128,7 +135,9 @@ class Binance(Exchange):
             "commission_BNB": Decimal("11.66365227")
         }
         """
+        logger.info("creating market order - {}".format(str(order)))
         order = self._validate_order(order, price_estimates)
+        logger.info("validated order - {}".format(str(order)))
         if order is None:
             return
         symbol = ''.join(order.product.split('_'))
@@ -146,6 +155,7 @@ class Binance(Exchange):
         parsed_response['price_estimates'] = price_estimates
         parsed_response['product'] = '_'.join(binance_product_to_currencies(
             parsed_response['symbol']))
+        logger.info("parsed order response - {}".format(str(parsed_response)))
         return parsed_response
 
     def parse_market_order_response(self, resp):
@@ -246,10 +256,12 @@ class Binance(Exchange):
                 "time": 1499827319559
             }
         """
+        logger.info("get order = {}".format(str(params)))
         d = self._parse_params(params)
         resp = self.client.get_order(**d)
         resp.update({'orig_quantity': resp['origQty'],
                      'executed_quantity': resp['executedQty']})
+        logger.info("get order response - {}".format(str(resp)))
         return resp
 
     def cancel_limit_order(self, params):
@@ -265,8 +277,17 @@ class Binance(Exchange):
                 "clientOrderId": "cancelMyOrder1"
             }
         """
+        logger.info("canceled order - {}".format(str(params)))
         d = self._parse_params(params)
-        return self.client.cancel_order(**d)
+        try:
+            resp = self.client.cancel_order(**d)
+        except BinanceAPIException as e:
+            if e.message != "UNKNOWN_ORDER":
+                raise e
+            logger.warning("Exception{code} with message ={message}".format(
+                code=e.code, message=e.message))
+            resp = {}
+        return resp
 
     def _parse_params(self, params):
         d = {}
