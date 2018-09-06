@@ -122,7 +122,7 @@ This defines a new target allocatoin for a portfolio. The difference between thi
 
 `
 curl -H "Content-Type: application/json" 
--d '{"binance": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCC", "portion": 0.3599}]}, "api_key": "aaaaa"}' 
+-d '{"binance": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCC", "portion": 0.3599}], "type": "limit"}, "api_key": "aaaaa"}' 
 -X PUT localhost:8000/api/portfolio/
 `
 
@@ -133,6 +133,7 @@ PUT /api/portfolio
 	"binance": {
 		"api_key": "***",
 		"secret_key": "***",
+		"type": "market",
 		"allocations": [
 			{"coin":"ETH", "portion": 0.43},
 			{"coin":"USDT", "portion": 0.2100},
@@ -141,7 +142,7 @@ PUT /api/portfolio
 	}
 }
 ```
-This example targets 43% ETH, 36% BCC and 21% USDT. The sum of portions should be close to 100% (between 99% and 100%). Any and all leftover/extra assets always assume to being held in BTC. In this example it's expected that some small amount ~0.01% will be leftover in BTC
+This example targets 43% ETH, 36% BCC and 21% USDT using market orders. The sum of portions should be close to 100% (between 99% and 100%). Any and all leftover/extra assets always assume to being held in BTC. In this example it's expected that some small amount ~0.01% will be leftover in BTC
 
 ```
 RESPONSE 202 Accepted
