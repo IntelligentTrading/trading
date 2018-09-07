@@ -16,6 +16,18 @@ def limit_order_rebalance_retry_after_time_estimate(number_of_trials,
     return needed_time
 
 
+def place_limit_or_market_order(exchange, order, threshold,
+                                price_estimates, base):
+    commodity, _ = order.product.split('_')
+    volume = (price_estimates[commodity] / price_estimates[base] *
+              order._quantity)
+    if volume < threshold:
+        order._type = OrderType.MARKET
+        order._price = None
+        return exchange.place_market_order(order, price_estimates)
+    return exchange.place_limit_order(order)
+
+
 def limit_order_rebalance(exchange: Exchange,
                           weights: Dict[str, Decimal],
                           user, update_function, *,

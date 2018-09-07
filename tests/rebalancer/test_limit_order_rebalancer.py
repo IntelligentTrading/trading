@@ -9,6 +9,7 @@ from internals.enums import OrderAction, OrderType
 from internals.orderbook import OrderBook
 from rebalancer.limit_order_rebalancer import limit_order_rebalance
 from rebalancer.limit_order_rebalancer import limit_order_rebalance_with_orders
+from rebalancer.limit_order_rebalancer import place_limit_or_market_order
 
 
 class LimitOrderRebalancerTester(unittest.TestCase):
@@ -364,6 +365,83 @@ class LimitOrderRebalancerTester(unittest.TestCase):
             self.assertEqual(order._quantity, correct_order._quantity)
             self.assertEqual(order._price, correct_order._price)
 
+    def test_place_limit_or_market_order(self):
+        exchange = FakeExchange2()
+        base = 'BTC'
+        threshold = Decimal('0.01')
+        price_estimates = {
+            'BTC': Decimal('10000'),
+            'LTC': Decimal('100'),
+            'USDT': Decimal('1')
+        }
+        order = Order('LTC_USDT', OrderType.LIMIT,
+                      OrderAction.SELL, Decimal('10'), Decimal('101'))
+        ret = place_limit_or_market_order(
+            exchange, order, threshold, price_estimates, base)
+        self.assertEqual(ret, 'limit')
+
+        order = Order('LTC_USDT', OrderType.LIMIT,
+                      OrderAction.SELL, Decimal('0.1'), Decimal('101'))
+        ret = place_limit_or_market_order(
+            exchange, order, threshold, price_estimates, base)
+        self.assertEqual(ret, 'market')
+
+        order = Order('BTC_USDT', OrderType.LIMIT,
+                      OrderAction.SELL, Decimal('0.01'), Decimal('10001'))
+        ret = place_limit_or_market_order(
+            exchange, order, threshold, price_estimates, base)
+        self.assertEqual(ret, 'limit')
+
+        order = Order('BTC_USDT', OrderType.LIMIT,
+                      OrderAction.SELL, Decimal('0.1'), Decimal('10001'))
+        ret = place_limit_or_market_order(
+            exchange, order, threshold, price_estimates, base)
+        self.assertEqual(ret, 'limit')
+
+        order = Order('BTC_USDT', OrderType.LIMIT,
+                      OrderAction.SELL, Decimal('0.005'), Decimal('10001'))
+        ret = place_limit_or_market_order(
+            exchange, order, threshold, price_estimates, base)
+        self.assertEqual(ret, 'market')
+
+        orders = exchange.orders
+        self.assertEqual(orders[0][0].product, 'LTC_USDT')
+        self.assertEqual(orders[0][0]._type, OrderType.LIMIT)
+        self.assertEqual(orders[0][0]._action, OrderAction.SELL)
+        self.assertEqual(orders[0][0]._quantity, Decimal('10'))
+        self.assertEqual(orders[0][0]._price, Decimal('101'))
+        self.assertEqual(len(orders[0]), 1)
+
+        self.assertEqual(orders[1][0].product, 'LTC_USDT')
+        self.assertEqual(orders[1][0]._type, OrderType.MARKET)
+        self.assertEqual(orders[1][0]._action, OrderAction.SELL)
+        self.assertEqual(orders[1][0]._quantity, Decimal('0.1'))
+        self.assertIsNone(orders[1][0]._price)
+        self.assertEqual(len(orders[1]), 2)
+        self.assertDictEqual(orders[1][1], price_estimates)
+
+        self.assertEqual(orders[2][0].product, 'BTC_USDT')
+        self.assertEqual(orders[2][0]._type, OrderType.LIMIT)
+        self.assertEqual(orders[2][0]._action, OrderAction.SELL)
+        self.assertEqual(orders[2][0]._quantity, Decimal('0.01'))
+        self.assertEqual(orders[2][0]._price, Decimal('10001'))
+        self.assertEqual(len(orders[2]), 1)
+
+        self.assertEqual(orders[3][0].product, 'BTC_USDT')
+        self.assertEqual(orders[3][0]._type, OrderType.LIMIT)
+        self.assertEqual(orders[3][0]._action, OrderAction.SELL)
+        self.assertEqual(orders[3][0]._quantity, Decimal('0.1'))
+        self.assertEqual(orders[3][0]._price, Decimal('10001'))
+        self.assertEqual(len(orders[3]), 1)
+
+        self.assertEqual(orders[4][0].product, 'BTC_USDT')
+        self.assertEqual(orders[4][0]._type, OrderType.MARKET)
+        self.assertEqual(orders[4][0]._action, OrderAction.SELL)
+        self.assertEqual(orders[4][0]._quantity, Decimal('0.005'))
+        self.assertIsNone(orders[4][0]._price)
+        self.assertEqual(len(orders[4]), 2)
+        self.assertDictEqual(orders[4][1], price_estimates)
+
 
 class FakeExchange(Binance):
     def __init__(self, **kwargs):
@@ -381,3 +459,16 @@ class FakeExchange(Binance):
 
     def get_maker_fee(self, product):
         return self.fees[product]
+
+
+class FakeExchange2(object):
+    def __init__(self):
+        self.orders = []
+
+    def place_market_order(self, order, price_estimates):
+        self.orders.append([order, price_estimates])
+        return 'market'
+
+    def place_limit_order(self, order):
+        self.orders.append([order])
+        return 'limit'
