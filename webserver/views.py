@@ -63,7 +63,7 @@ class PortfolioView(APIView):
             "status": "target allocations queued for processing",
             "portfolio_processing_request":
                 "/api/portfolio_process/{}".format(result.id),
-            "retry_after": 25000
+            "retry_after": 35000
         })
 
 

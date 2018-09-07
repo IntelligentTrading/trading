@@ -67,8 +67,6 @@ def limit_order_rebalance_with_orders(update_function,
             for order in orders)):
         orderbooks = exchange.get_orderbooks(products)
         orderbooks = {ob.product: ob for ob in orderbooks}
-        update_function(limit_order_rebalance_retry_after_time_estimate(
-            number_of_trials, max_retries, time_delta))
         currencies_from = set()
         currencies_to = set()
         for order in orders:
@@ -111,6 +109,9 @@ def limit_order_rebalance_with_orders(update_function,
         for order in orders_to_remove:
             number_of_trials[order.product] = max_retries
             orders.remove(order)
+
+        update_function(limit_order_rebalance_retry_after_time_estimate(
+            number_of_trials, max_retries, time_delta))
         time.sleep(time_delta)
         for order_response in order_responses:
             exchange.cancel_limit_order(order_response)

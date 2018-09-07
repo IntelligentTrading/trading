@@ -1,7 +1,9 @@
-from exchange.exchange import Exchange
-from cbpro import PublicClient, AuthenticatedClient
 from decimal import Decimal
 from typing import List, Dict
+from cbpro import PublicClient, AuthenticatedClient
+
+from logger import logger
+from exchange.exchange import Exchange
 from internals.order import Order
 from internals.orderbook import OrderBook
 from internals.utils import quantize
@@ -43,8 +45,10 @@ class CoinbasePro(Exchange):
     def place_market_order(self, order: Order,
                            price_estimates: Dict[str, Decimal]):
 
+        logger.info("creating market order - {}".format(str(order)))
         order = self.validate_order(order, price_estimates)
         symbol = order.product.replace('_', '-')
+        logger.info("validated order - {}".format(str(order)))
         resp = self.client.place_market_order(
             symbol, order._action.name.lower(), size=order._quantity)
 
@@ -52,15 +56,19 @@ class CoinbasePro(Exchange):
         parsed_response['price_estimates'] = price_estimates
         parsed_response['product'] = parsed_response['symbol'].replace(
             '-', '_')
+        logger.info("parsed order response - {}".format(str(parsed_response)))
         return parsed_response
 
     def place_limit_order(self, order: Order):
+        logger.info("creating limit order - {}".format(str(order)))
         order = self.validate_order(order)
+        logger.info("validated order - {}".format(str(order)))
         symbol = order.product.replace('_', '-')
         resp = self.client.place_market_order(symbol,
                                               order._action.name.lower(),
                                               order._price, order._quantity,
                                               post_only=True)
+        logger.info("order response - {}".format(str(resp)))
         return {'order_id': resp['id']}
 
     def _validate_order(self, order, price_estimates=None):
@@ -121,18 +129,21 @@ class CoinbasePro(Exchange):
                 'side': response['side']}
 
     def cancel_limit_order(self, response):
+        logger.info("canceled order - {}".format(response))
         order_id = response['order_id']
         return self.client.cancel_order(order_id)
 
     def get_order(self, response):
+        logger.info("get order = {}".format(str(response)))
         order_id = response['order_id']
         resp = self.client.get_order(order_id)
         # TODO: executed quantity and orig_quantity
         resp.update({'executed_quantity': Decimal(resp['executed_value']),
                      'orig_quantity': Decimal(resp['size'])})
+        logger.info("get order response - {}".format(str(resp)))
         return resp
 
-    def get_orderbooks(self, products: List[str], depth: int =1):
+    def get_orderbooks(self, products: List[str], depth: int=1):
         orderbooks = []
         for product in products:
             symbol = product.replace('_', '-')
