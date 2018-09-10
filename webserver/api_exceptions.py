@@ -3,7 +3,7 @@ from rest_framework.exceptions import APIException
 
 class ExchangeNotSupported(APIException):
     status_code = 418
-    default_detail = 'Only Binance exchange support is available at this time.'
+    default_detail = 'only binance exchange support available at this time'
     default_code = 'i_am_a_teapot'
 
 
@@ -15,14 +15,14 @@ class MustProvideSingleExchange(APIException):
 
 class MustProvideBinanceCredentials(APIException):
     status_code = 400
-    default_detail = ('YOu must provide "api_key" and "secret_key" to'
+    default_detail = ('You must provide "api_key" and "secret_key" to'
                       'authenticate with the Exchange')
     default_code = 'Bad_Request'
 
 
 class WeightsSumGreaterThanOne(APIException):
     status_code = 400
-    default_detail = 'Allocations sum is greater than 1.0'
+    default_detail = 'portions add to more than 1.0'
     default_code = 'Bad_Request'
 
 

@@ -102,7 +102,7 @@ curl -H "Content-Type: application/json" \
 
 ```
 RESPONSE 404 NOT FOUND
-{ "error": "exchange API keys invalid" }
+{ "detail": "APIError(code=-2015): Invalid API-key, IP, or permissions for action." }
 ```
 
 `
@@ -113,7 +113,7 @@ curl -H "Content-Type: application/json" \
 
 ```
 RESPONSE 418 I'M A TEAPOT
-{ "error": "only binance exchange support available at this time" }
+{ "detail": "only binance exchange support available at this time" }
 ```
 
 
@@ -165,7 +165,7 @@ curl -H "Content-Type: application/json"
 
 ```
 RESPONSE 400 Bad Request
-{"error": "portions add to more than 1.0"}
+{"detail": "portions add to more than 1.0"}
 ```
 
 `
@@ -176,7 +176,7 @@ curl -H "Content-Type: application/json"
 
 ```
 RESPONSE 404 NOT FOUND
-{ "error": "exchange API keys invalid" }
+{ "detail": "APIError(code=-2015): Invalid API-key, IP, or permissions for action." }
 ```
 
 `
@@ -187,7 +187,7 @@ curl -H "Content-Type: application/json"
 
 ```
 RESPONSE 418 I'M A TEAPOT
-{ "error": "only binance exchange support available at this time" }
+{ "detail": "only binance exchange support available at this time" }
 ```
 
 ## Binance Exchange Check Portfolio Processing
@@ -242,7 +242,7 @@ RESPONSE 200 Accepted
 ```
 RESPONSE 410 Gone OR 404 Not Found
 { 
-	"status": "not found or expired"
+	"detail": "not found or expired"
 }
 ```
 processing task not found because it was expired from the cache, client should start over with a new set of requests
@@ -262,7 +262,7 @@ if the api key is not valid, the user will get
 ```
 RESPONSE 401 Unauthorized
 { 
-	"status": "Not authorized"
+	"detail": "Not authorized"
 }
 ```
 
@@ -271,7 +271,7 @@ If trying to view another user's rebalance it will get 410 or 404
 ```
 RESPONSE 410 Gone OR 404 Not Found
 { 
-	"status": "not found or expired"
+	"detail": "not found or expired"
 }
 ```
 
@@ -342,7 +342,7 @@ broker (redis) and execute desired trades, and update the task with results.
 ### Checking rebalance progress
 
 Whenever the webserver receives request to see the progress
-(GET /api/portfolio_process/TASK-ID) it will query the webserver, to see the
+(POST /api/portfolio_process/TASK-ID) it will query the webserver, to see the
 status of the task, which will be stored in the redis message broker
 together with the result of the task.
 

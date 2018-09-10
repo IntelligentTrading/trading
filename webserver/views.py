@@ -5,7 +5,7 @@ from celery.result import AsyncResult
 from rest_framework.views import APIView
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound
 
 from webserver.api_exceptions import WeightsSumGreaterThanOne
 from webserver.decorators import with_valid_api_key, \
@@ -74,11 +74,9 @@ class ProcessingView(APIView):
     def post(self, request, process_id):
         result = AsyncResult(process_id, app=tasks.app)
 
-        if result.state == "PENDING":
-            raise NotFound
-
-        if result.result["api_key"] != request.user.api_key:
-            raise PermissionDenied
+        if (result.state == "PENDING" or
+                result.result["api_key"] != request.user.api_key):
+            raise NotFound("not found or expired")
 
         if result.status == "STARTED":
             return Response({
