@@ -15,6 +15,7 @@ where `young-above-487` is the application name.
 In heroku the databases are used as additions. To see if there are databases
 attached simply run `heroku addons`.
 
+#### PostgreSQL 
 By default heroku creates postgres instance and the URI is 
 stored in heroku environment as DATABASE_URL. 
 If it is not present then we need to add it manually.
@@ -22,6 +23,7 @@ If it is not present then we need to add it manually.
 For development purposes it is better to pick `hobby-dev` plan which is free.
 For example `heroku addons:create heroku-postgresql:hobby-dev -a black-unicorn-123`
 
+#### Redis
 For celery workers we need to add redis manually. Again by using addons command
 `heroku addons:create heroku-redis:[plan] -a [application_name]`
 
