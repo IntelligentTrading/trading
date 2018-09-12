@@ -58,15 +58,17 @@ instance on your computer.
 
 If you are using a fresh install, you'll need to initialize the database
 
-```sh
-heroku run python manage.py migrate
-```
+`heroku run python manage.py migrate`
 
 ## Creating new users
 
 Creating user can be done by webserver/create_user.py script.
 To create user call 
-```sh
-heroku run python webserver/create_user.py
+`heroku run python webserver/create_user.py`
+
+It will return the api_key of created user. You will see a promt with the new api key
 ```
-It will return the api_key of created user.
+% heroku run python webserver/create_user.py
+Running python webserver/create_user.py on ⬢ black-unicorn-123... up, run.2577 (Free)
+User with 77777aaaaaaaaaaaaaaaaaeaaaa77777 key created
+```
