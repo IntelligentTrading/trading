@@ -21,4 +21,4 @@ user = User.objects.create(api_key=api_key,
                            date_created=datetime.now(tz=pytz.utc))
 user.save()
 
-print("User with {} key created".format(api_key))
+print('Created a user with "{}" API key.'.format(api_key))
