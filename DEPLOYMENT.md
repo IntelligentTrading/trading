@@ -29,7 +29,21 @@ For celery workers we need to add redis manually. Again by using addons command
 
 After these steps we have created heroku app, added postgres and redis. 
 
-### Deploying locally
+## Deployment
+
+### Deploying on Heroku
+
+To deploy service remotely just run `git push heroku master`. 
+And now it is ready! You can open app in browser by `heroku open`.
+
+In order to scale the web or worker instances just `heroku ps:scale web=1` or 
+`heroku ps:scale worker=1` correspondingly. 
+
+To turn off the instance put the value 0 `heroku ps:scale worker=0`.
+
+### Deploying locally (optional)
+
+Local deployment is useful for debugging.
 
 To deploy service locally we need to export postgres and redis URIs to our env.
 For getting URIs just run `heroku run env | grep DATABASE` and 
@@ -37,17 +51,22 @@ For getting URIs just run `heroku run env | grep DATABASE` and
 Then just run by command `heroku local`. Congratulations you have running 
 instance on your computer.
 
-### Deploying remotely
 
-To deploy service remotely just run `git push heroku master`. 
-And now it is ready! You can open app in browser by `heroku open`.
+## Initial set up
 
-In order to scale the web or worker instances just `heroku ps:scale web=1` or 
-`heroku ps:scale worker=1` correspondingly. 
-To turn off the instance put the value 0 `heroku ps:scale worker=0`.
+### Setting up the database for a fresh install of postgreSQL
+
+If you are using a fresh install, you'll need to initialize the database
+
+```sh
+heroku run python manage.py migrate
+```
 
 ## Creating new users
 
 Creating user can be done by webserver/create_user.py script.
-To create user call `heroku run python webserver/create_user.py`
+To create user call 
+```sh
+heroku run python webserver/create_user.py
+```
 It will return the api_key of created user.
