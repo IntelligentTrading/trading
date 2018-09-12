@@ -1,4 +1,4 @@
-Rebalancing algorithms use min-cost-flow algorithm to minimize lost money while rebalancing. Market order rebalancing algorithm finds best way to rebalance minimizing lost money because of spread and fees and creates corresponding market orders.
+Rebalancing algorithms use [min-cost-flow algorithm](https://en.wikipedia.org/wiki/Minimum-cost_flow_problem) to minimize lost money while rebalancing. Market order rebalancing algorithm finds best way to rebalance minimizing lost money because of spread and fees and creates corresponding market orders.
 
 Limit order rebalancing finds way to rebalance as market order rebalancing, but at first it minimizes number of orders to be created. Than the algorithm runs by the following steps:
 1. find orders, that can be placed now, and create them
