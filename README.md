@@ -42,7 +42,7 @@ This system is proposed to run on a Python/Django/Postgres stack, hosted on Hero
 
 `/api/portfolio` with data in request body
 
-```
+```json
 POST /api/portfolio
 {
         "api_key": "...",
@@ -53,11 +53,11 @@ POST /api/portfolio
 }
 ```
 
-`
+```sh
 curl -H "Content-Type: application/json" \
 -d '{"binance": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' \
 -X POST localhost:8000/api/portfolio/
-`
+```
 
 In request data, includes json data for Exchange account access (binance only for v.1)
 
@@ -89,29 +89,29 @@ Value is the estimated total value of all assets on binance, denominated in BTC
 
 Sum of all portions should be between 0.9900 and 1.0000
 
-```
+```python
 allocations_sum = sum([float([a["portion"]) for a in data["binance"]["allocations"]])
 assert allocations_sum <= 1 and allocations_sum > 0.99
 ```
 
-`
+```sh
 curl -H "Content-Type: application/json" \
 -d '{"binance": {"secret_key": "secret", "api_key": "wrong key"}, "api_key": "aaaaa"}' \
 -X POST localhost:8000/api/portfolio/
-`
-
 ```
+
+```json
 RESPONSE 404 NOT FOUND
 { "detail": "APIError(code=-2015): Invalid API-key, IP, or permissions for action." }
 ```
 
-`
+```sh
 curl -H "Content-Type: application/json" \
 -d '{"bitfinex": {"secret_key": "secret", "api_key": "api-aaa"}, "api_key": "aaaaa"}' \
 -X POST localhost:8000/api/portfolio/
-`
-
 ```
+
+```json
 RESPONSE 418 I'M A TEAPOT
 { "detail": "only binance exchange support available at this time" }
 ```
@@ -120,13 +120,13 @@ RESPONSE 418 I'M A TEAPOT
 ## Binance Exchange Set Portfolio New State
 This defines a new target allocatoin for a portfolio. The difference between this target allocatoin and the current state could range from a very small to a very large differenc. Given a set of target alloctions, a portfolio might aim to "cash out" 150 coins and move 100% of assets to USDT, or vis versa.
 
-`
+```sh
 curl -H "Content-Type: application/json" 
 -d '{"binance": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCC", "portion": 0.3599}], "type": "limit"}, "api_key": "aaaaa"}' 
 -X PUT localhost:8000/api/portfolio/
-`
-
 ```
+
+```json
 PUT /api/portfolio
 {
         "api_key": "...",
@@ -144,7 +144,7 @@ PUT /api/portfolio
 ```
 This example targets 43% ETH, 36% BCC and 21% USDT using market orders. The sum of portions should be close to 100% (between 99% and 100%). Any and all leftover/extra assets always assume to being held in BTC. In this example it's expected that some small amount ~0.01% will be leftover in BTC
 
-```
+```json
 RESPONSE 202 Accepted
 { 
 	"status": "target allocations queued for processing",
@@ -157,55 +157,55 @@ RESPONSE 202 Accepted
 
 `retry_after` informs the client that it can check back after some period of time if they want to check on the status of the processing. This is simply an estimate of when the system expects to be nearly done processing trades.
 
-`
+```sh
 curl -H "Content-Type: application/json" 
 -d '{"binance": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCC", "portion": 0.5}]}, "api_key": "aaaaa"}' 
 -X PUT localhost:8000/api/portfolio/
-`
-
 ```
+
+```json
 RESPONSE 400 Bad Request
 {"detail": "portions add to more than 1.0"}
 ```
 
-`
+```sh
 curl -H "Content-Type: application/json" 
 -d '{"binance": {"secret_key": "secret", "api_key": "wrong key", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCC", "portion": 0.5}]}, "api_key": "aaaaa"}' 
 -X PUT localhost:8000/api/portfolio/
-`
-
 ```
+
+```json
 RESPONSE 404 NOT FOUND
 { "detail": "APIError(code=-2015): Invalid API-key, IP, or permissions for action." }
 ```
 
-`
+```sh
 curl -H "Content-Type: application/json" 
 -d '{"coinbase-pro": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCC", "portion": 0.5}]}, "api_key": "aaaaa"}' 
 -X PUT localhost:8000/api/portfolio/
-`
-
 ```
+
+```json
 RESPONSE 418 I'M A TEAPOT
 { "detail": "only binance exchange support available at this time" }
 ```
 
 ## Binance Exchange Check Portfolio Processing
 
-```
+```json
 POST /api/portfolio_process/<processing_id>
 {
     "api_key": "..."
 }
 ```
 
-`
+```sh
 curl -H "Content-Type: application/json" 
 -d '{"api_key": "key"}' 
 -X POST localhost:5000/api/portfolio_process/a5bf73ecbbaf
-`
-
 ```
+
+```json
 RESPONSE 202 Accepted
 { 
 	"status": "processing in progress",
@@ -214,7 +214,7 @@ RESPONSE 202 Accepted
 }
 ```
 
-```
+```json
 RESPONSE 200 Accepted
 { 
 	"status": "processing complete in 16092ms",
@@ -239,7 +239,7 @@ RESPONSE 200 Accepted
 
 
 
-```
+```json
 RESPONSE 410 Gone OR 404 Not Found
 { 
 	"detail": "not found or expired"
@@ -251,7 +251,7 @@ processing task not found because it was expired from the cache, client should s
 ### Authentication with the server
 
 Each request should have `api_key` attribute, that will server to authenticate with out server.
-```
+```json
 {
   "api_key": "...",
   ...
@@ -259,7 +259,7 @@ Each request should have `api_key` attribute, that will server to authenticate w
 ```
 if the api key is not valid, the user will get 
  
-```
+```json
 RESPONSE 401 Unauthorized
 { 
 	"detail": "Not authorized"
@@ -268,7 +268,7 @@ RESPONSE 401 Unauthorized
 
 If trying to view another user's rebalance it will get 410 or 404
 
-```
+```json
 RESPONSE 410 Gone OR 404 Not Found
 { 
 	"detail": "not found or expired"
@@ -277,20 +277,20 @@ RESPONSE 410 Gone OR 404 Not Found
 
 ## Getting Statistics about market order execution.
 
-```
+```json
 POST /api/market_order_statistics/
 {
     "api_key": "..."
 }
 ```
 
-`
+```sh
 curl -H "Content-Type: application/json" 
 -d '{"api_key": "key"}' 
 -X POST localhost:5000/api/market_order_statistics/
-`
-
 ```
+
+```json
 {
     "mean": 0.1, 
     "std": 0.01
