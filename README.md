@@ -377,9 +377,9 @@ be given by the user.
 1. Get user resources
 1. Get market prices for all commodities
 1. estimate the volume of trades using wall prices and [market order algorithm](./REBALANCE.md)
-1. if type == 'market'
+1. if type is "market"
    - execute market orders
-1. if type == 'limit'
+1. if type is "limit"
    - use mid market prices and create efficient limit orders
    - place limit orders with 1 minute expiration
    - sleep for 1 minute
