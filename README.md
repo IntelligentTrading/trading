@@ -371,15 +371,15 @@ and we don't have a performance guarantee, because prices change within
 5 minute period as well.
 
 Executed on celery workers, see above proposal for details.
-This algorithm requires VOLUME_THRESHOLD variable which we propose should
+This algorithm requires type variable which we propose should
 be given by the user.
 
 1. Get user resources
 1. Get market prices for all commodities
-1. estimate the volume of trades using wall prices and market order algorithm
-1. if volume < VOLUME_THRESHOLD
+1. estimate the volume of trades using wall prices and [market order algorithm](./REBALANCE.md)
+1. if type == 'market'
    - execute market orders
-1. if volume > VOLUME_THRESHOLD
+1. if type == 'limit'
    - use mid market prices and create efficient limit orders
    - place limit orders with 1 minute expiration
    - sleep for 1 minute
