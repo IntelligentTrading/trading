@@ -34,6 +34,10 @@ def initialize_exchange(view_func):
         api_key = info['api_key']
         api_secret = info['secret_key']
         exchange = exchange_class(api_key, api_secret)
+
+        #todo: remove api_key and api_secret from the request object and erase from memory
+        # we don't want the keys here to be accidentally logged, saved, or forwarded somewhere
+
         try:
             exchange.get_resources()
         except binance.exceptions.BinanceAPIException as e:
