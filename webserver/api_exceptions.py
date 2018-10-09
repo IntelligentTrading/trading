@@ -27,8 +27,15 @@ class WeightsSumGreaterThanOne(APIException):
 
 
 class BinanceException(APIException):
+
     def __init__(self, exception):
         self.detail = str(exception)
 
     status_code = 400
     default_code = 'Bad_Request'
+
+
+class RebalanceInProgress(APIException):
+    status_code = 400
+    default_code = "Bad_Request"
+    default_detail = "Another rebalance task from this api key is in progress."

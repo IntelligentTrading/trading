@@ -18,9 +18,10 @@ def initialize_exchange(view_func):
     def _wrapped_view(request, *args, **kwargs):
 
         data = request.data if hasattr(request, 'data') else request
+        if 'force_reset' in data:
+            kwargs['force_reset'] = data.pop('force_reset')
         if len(data) != 1:
             raise MustProvideSingleExchange
-
         [(exchange_name, info)] = data.items()
 
         if exchange_name.upper() != 'BINANCE':
@@ -34,9 +35,9 @@ def initialize_exchange(view_func):
         api_key = info['api_key']
         api_secret = info['secret_key']
         exchange = exchange_class(api_key, api_secret)
-
-        #todo: remove api_key and api_secret from the request object and erase from memory
-        # we don't want the keys here to be accidentally logged, saved, or forwarded somewhere
+        # NOTE, that `api_key` and `api_secret` are part of the info object and
+        # if info object is logged user sensitive information will be stored
+        # in the log, so take care when logging the info object.
 
         try:
             exchange.get_resources()

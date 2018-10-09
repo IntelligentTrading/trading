@@ -122,7 +122,7 @@ This defines a new target allocatoin for a portfolio. The difference between thi
 
 ```sh
 curl -H "Content-Type: application/json" 
--d '{"binance": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCC", "portion": 0.3599}], "type": "limit"}, "api_key": "aaaaa"}' 
+-d '{"binance": {"secret_key": "secret", "api_key": "api-aaa", "allocations": [{"coin": "ETH", "portion": 0.43}, {"coin":"USDT", "portion": 0.2100}, {"coin":"BCC", "portion": 0.3599}], "type": "limit"}, "api_key": "aaaaa", ["force_reset": true]}' 
 -X PUT localhost:8000/api/portfolio/
 ```
 
@@ -156,6 +156,15 @@ RESPONSE 202 Accepted
 `portfolio_processing_request` is a uri to and endpoint for checking the status of the processing
 
 `retry_after` informs the client that it can check back after some period of time if they want to check on the status of the processing. This is simply an estimate of when the system expects to be nearly done processing trades.
+
+If rebalance request was sent, accepted, but not ended, new request will be denied with the following response:
+
+```json
+RESPONSE 400 Bad Request
+{ "detail": "Another rebalance task from this api key is in progress." }
+```
+
+If `force_reset` is sent and is True and 60 seconds passed from request sending, which have created task, that is in progress now, that task will be terminated whether it was started or not, and the new one will be created using information from current request.
 
 ```sh
 curl -H "Content-Type: application/json" 

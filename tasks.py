@@ -26,7 +26,7 @@ REBALANCING_ALGORITHM = {
 
 
 @app.task(bind=True)
-def rebalance_task(self, request, api_key, weights):
+def rebalance_task(self, request, api_key, weights, start_time):
 
     @initialize_exchange
     def rebalance(this, request, exchange, params):

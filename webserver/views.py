@@ -1,17 +1,19 @@
 import tasks
+import time
 import numpy as np
 from decimal import Decimal
+from celery.task.control import revoke
 from celery.result import AsyncResult
 from rest_framework.views import APIView
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
-
-from webserver.api_exceptions import WeightsSumGreaterThanOne
+from webserver.api_exceptions import WeightsSumGreaterThanOne,\
+    RebalanceInProgress
 from webserver.decorators import with_valid_api_key, \
     initialize_exchange
 from webserver.models import Statistics
-from webserver.utils import get_portfolio
+from webserver.utils import get_portfolio, user_has_unfinished_tasks
 
 
 class HealthCkeckView(APIView):
@@ -31,12 +33,26 @@ class PortfolioView(APIView):
 
     @with_valid_api_key
     @initialize_exchange
-    def put(self, request, exchange, params):
+    def put(self, request, exchange, params, force_reset=False):
+        i = tasks.app.control.inspect()
+        api_key = request.user.api_key
+        job_args = (user_has_unfinished_tasks(i.active(), api_key) or
+                    user_has_unfinished_tasks(i.reserved(), api_key))
+        if job_args is not None:
+            job, args = job_args
+            result = AsyncResult(job['id'], app=tasks.app)
+            # time of request is sent to rebalance task, so we can check
+            # if 60 seconds passed using 3-rd: start_time argument of job
+            if not force_reset or (time.time() - args[3]) < 60:
+                raise RebalanceInProgress
+            else:
+                revoke(job['id'], terminate=True)
         allocations = params['allocations']
         total_weight = sum(Decimal(allocation['portion'])
                            for allocation in allocations)
         if total_weight > 1:
             raise WeightsSumGreaterThanOne
+
         found_btc = False
         allocations = [{k: (v if k != "portion" else Decimal(v))
                         for k, v in allocation.items()}
@@ -56,7 +72,8 @@ class PortfolioView(APIView):
             for allocation in allocations}
         result = tasks.rebalance_task.delay(request.data,
                                             request.user.api_key,
-                                            weights)
+                                            weights,
+                                            time.time())
         return Response({
             "status": "target allocations queued for processing",
             "portfolio_processing_request":
@@ -71,7 +88,7 @@ class ProcessingView(APIView):
     @with_valid_api_key
     def post(self, request, process_id):
         result = AsyncResult(process_id, app=tasks.app)
-        if (result.state == "PENDING" or
+        if (result.state in ["PENDING", "REVOKED"] or
                 result.result["api_key"] != request.user.api_key):
             raise NotFound("not found or expired")
         if result.status == "STARTED":

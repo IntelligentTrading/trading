@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal, ROUND_DOWN
 
 from rebalancer.utils import get_price_estimates_from_orderbooks, \
@@ -29,3 +30,29 @@ def get_portfolio(exchange):
     assert 1 >= allocations_sum > 0.99
 
     return {"value": portfolio_value, "allocations": allocations}
+
+
+def dict_replace(string, dictionary):
+    for key, value in dictionary.items():
+        string = string.replace(key, value)
+    return string
+
+
+def user_has_unfinished_tasks(tasks, api_key):
+    """
+    checks if task with api_key exists in tasks
+    :param tasks: Dict[worker, List[job]],
+                  for example celery.Celery().control.inspect().active()
+    :param api_key: string, api key of user
+    :return: None if such job doesn't exist,
+             and Tuple(job, task arguments) otherwise
+    """
+    if tasks is None:
+        return
+    for worker, jobs in tasks.items():
+        for job in jobs:
+            args = json.loads(dict_replace(
+                job['args'], {'(': '[', ')': ']', '...': '', "'": '"'}))
+            # the arguments, which were sent to task
+            if args[1] == api_key:
+                return job, args
