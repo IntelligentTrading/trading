@@ -34,10 +34,12 @@ def limit_order_rebalance(exchange: Exchange,
                           max_retries: int = 10,
                           time_delta: int = 30,
                           base: str='USDT'):
+    pre_rebalance_results = pre_rebalance(exchange, weights, base)
+    if isinstance(pre_rebalance_results, list):
+        return pre_rebalance_results
     (products, resources, orderbooks, price_estimates,
      portfolio_value, initial_weights,
-     spread_fees) = pre_rebalance(exchange, weights, base)
-
+     spread_fees) = pre_rebalance_results
     fees = {product: exchange.get_maker_fee(product)
             for product in products}
 
@@ -53,6 +55,8 @@ def limit_order_rebalance(exchange: Exchange,
         for product in products}
     orders = rebalance_orders(
         initial_weights, weights, total_fees)
+    if isinstance(orders, Exception):
+        return orders
     orders = [(*order[:2], order[2] * portfolio_value) for order in orders]
     orders = [parse_order(order, products,
                           price_estimates, base,

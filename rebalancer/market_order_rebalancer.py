@@ -12,6 +12,10 @@ def market_order_rebalance_and_save(exchange: Exchange,
                                     base: str='USDT'):
     rets = market_order_rebalance(exchange, weights, update_function,
                                   base=base)
+    if isinstance(rets, Exception):
+        return rets
+    if isinstance(rets, list) and rets and isinstance(rets[0], str):
+        return rets
     summaries = create_order_statistics_objects(rets, user)
     Statistics.objects.bulk_create(summaries)
 
@@ -20,9 +24,14 @@ def market_order_rebalance(exchange: Exchange,
                            weights: Dict[str, Decimal],
                            update_function,
                            base: str='USDT'):
+    pre_rebalance_results = pre_rebalance(exchange, weights, base)
+
+    if isinstance(pre_rebalance_results, list):
+        return pre_rebalance_results
+
     (products, resources, orderbooks, price_estimates,
      portfolio_value, initial_weights,
-     spread_fees) = pre_rebalance(exchange, weights, base)
+     spread_fees) = pre_rebalance_results
 
     fees = {product: exchange.get_taker_fee(product)
             for product in products}
@@ -33,14 +42,18 @@ def market_order_rebalance(exchange: Exchange,
 
     orders = rebalance_orders(
         initial_weights, weights, total_fees)
+
+    if isinstance(orders, Exception):
+        return orders
+
     orders = [(*order[:2], order[2] * portfolio_value) for order in orders]
     orders = topological_sort(orders)
     orders = [parse_order(order, products,
                           price_estimates,
                           base)
               for order in orders]
-    l = len(orders)
-    update_function(l * 10000)
+    length = len(orders)
+    update_function(length * 10000)
     ret_orders = []
     for order in orders:
         for i in range(10):
@@ -48,8 +61,8 @@ def market_order_rebalance(exchange: Exchange,
             if not isinstance(ret_order, Exception):
                 ret_orders.append(ret_order)
                 break
-        l -= 1
-        update_function(l * 10000)
+        length -= 1
+        update_function(length * 10000)
         if ret_order is None or isinstance(ret_order, Exception):
             continue
         ret_order['mid_market_price'] = orderbooks[

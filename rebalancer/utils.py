@@ -6,6 +6,7 @@ from internals.order import Order
 from internals.enums import OrderType, OrderAction
 from networkx import digraph
 from networkx import flow
+from networkx.exception import NetworkXUnfeasible
 from exchange.exchange import Exchange
 
 
@@ -25,7 +26,10 @@ def rebalance_orders(initial_weights: Dict[str, Decimal],
     parsed_fees = {tuple(k.split('_')): v for k, v in fees.items()}
     digraph = create_flow_digraph(
         initial_weights, final_weights, parsed_fees, precision=precision)
-    orders_to_make = flow.min_cost_flow(digraph)
+    try:
+        orders_to_make = flow.min_cost_flow(digraph)
+    except NetworkXUnfeasible as error:
+        return error
     orders = []
     for currency_from, dct in orders_to_make.items():
         if currency_from == 'start':
@@ -41,14 +45,15 @@ def rebalance_orders(initial_weights: Dict[str, Decimal],
 def create_flow_digraph(initial_weights: Dict[str, Decimal],
                         final_weights: Dict[str, Decimal],
                         total_fees: Dict[Tuple[str, str], Decimal],
-                        precision: Decimal=float('1e-8')) -> digraph.DiGraph:
+                        precision: Decimal=Decimal('1e-8')) -> digraph.DiGraph:
     currencies = set(initial_weights.keys()) | set(final_weights.keys())
     start = 'start'
     end = 'end'
-    inv_precision = 1 / float(precision)
-
-    w1 = {k: int(float(v) * inv_precision) for k, v in initial_weights.items()}
-    w2 = {k: int(float(v) * inv_precision) for k, v in final_weights.items()}
+    inv_precision = 1 / precision
+    w1 = {k: int(Decimal(v) * inv_precision)
+          for k, v in initial_weights.items()}
+    w2 = {k: int(Decimal(v) * inv_precision) for k, v in final_weights.items()}
+    inv_precision = float(inv_precision)
     demand_from = sum(w1.values())
     demand_to = sum(w2.values())
     demand = min(demand_to, demand_from)
@@ -71,7 +76,6 @@ def create_flow_digraph(initial_weights: Dict[str, Decimal],
         graph.add_edge(c2, c1,
                        capacity=float('inf'),
                        weight=-int(float(fee.log10()) * inv_precision))
-
     return graph
 
 
@@ -79,8 +83,8 @@ def get_weights_from_resources(
         resources: Dict[str, Decimal],
         prices: Dict[str, Decimal]) -> Dict[str, Decimal]:
     resources_in_base = {
-        currency: resources[currency] * prices.get(currency, Decimal('0'))
-        for currency in resources
+        currency: resources[currency] * prices[currency]
+        for currency in resources if currency in prices
     }
     portfolio_value = sum(resources_in_base.values())
     weights = {
@@ -239,6 +243,14 @@ def pre_rebalance(exchange: Exchange,
     products = set(orderbook.product for orderbook in orderbooks)
 
     price_estimates = get_price_estimates_from_orderbooks(orderbooks, base)
+
+    not_existing_currencies = []
+    for cur in weights.keys():
+        if price_estimates.get(cur, Decimal('0')) == Decimal('0'):
+            not_existing_currencies.append(cur)
+    if not_existing_currencies:
+        return not_existing_currencies
+
     initial_weights = get_weights_from_resources(
         resources, price_estimates)
     portfolio_value = get_portfolio_value_from_resources(

@@ -45,8 +45,18 @@ def rebalance_task(self, request, api_key, weights, start_time):
             )
         update(12000)
         user = User.objects.get(api_key=api_key)
-        REBALANCING_ALGORITHM[params.get('type', 'market').upper()](
+        orders = REBALANCING_ALGORITHM[params.get('type', 'market').upper()](
             exchange, weights, user, update)
+        if isinstance(orders, Exception):
+            return {'api_key': api_key,
+                    'status': 'unknown error while rebalancing',
+                    'error': True}
+        if isinstance(orders, list) and orders and isinstance(orders[0], str):
+            return {'api_key': api_key,
+                    'status': 'error while rebalancing, '
+                    'the following currencies does not exist: {}'.format(
+                        ', '.join(orders)),
+                    'error': True}
 
         portfolio = get_portfolio(exchange)
         delta_t = (time.time() - start_time) * 1000

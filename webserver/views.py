@@ -100,6 +100,8 @@ class ProcessingView(APIView):
             })
         response = result.result
         response.pop('api_key')
+        if 'error' in response:
+            return Response({'status': response['status']})
         for market in response:
             if market != 'status':
                 break
