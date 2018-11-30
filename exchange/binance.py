@@ -62,6 +62,8 @@ class Binance(Exchange):
         for book in books_list:
             currency_pair = binance_product_to_currencies(
                 book['symbol'])
+            if not currency_pair:
+                continue
             product = '_'.join(currency_pair)
             if products is not None and product not in products:
                 continue

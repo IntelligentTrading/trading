@@ -2,7 +2,7 @@ from decimal import Decimal, ROUND_DOWN, ROUND_UP
 
 
 def binance_product_to_currencies(product: str) -> [str, str]:
-    for c in 'USDT BTC BNB ETH'.split():
+    for c in 'USDT BTC BNB ETH PAX'.split():
         if product.endswith(c):
             return product[:-len(c)], c
 
