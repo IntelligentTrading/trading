@@ -26,7 +26,7 @@ class Binance(Exchange):
                 'base': filt['quoteAsset'],
                 'commodity': filt['baseAsset'],
             }
-            for filt in filters
+            for filt in filters if 'minQty' in filt['filters'][1]
         }
 
     def get_mid_price_orderbooks(self, products=None):
