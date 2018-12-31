@@ -1,4 +1,5 @@
 import json
+import logging
 from decimal import Decimal, ROUND_DOWN
 
 from rebalancer.utils import get_price_estimates_from_orderbooks, \
@@ -18,6 +19,10 @@ def get_portfolio(exchange):
 
     allocations = []
     for currency, quantity in resources.items():
+        if not currency in weights:
+            logging.critical(f"{currency} is not the proper ticker symbol")
+            continue
+
         allocation = {
             "coin": currency,
             "amount": quantity,
