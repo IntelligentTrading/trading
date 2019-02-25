@@ -14,19 +14,20 @@ class Binance(Exchange):
         super().__init__()
         self.client = Client(api_key, secret_key)
         filters = self.client.get_exchange_info()['symbols']
+
         self.filters = {
             filt['symbol']: {
-                'min_order_size': Decimal(filt['filters'][1]['minQty']),
-                'max_order_size': Decimal(filt['filters'][1]['maxQty']),
-                'order_step': Decimal(filt['filters'][1]['stepSize']),
-                'min_notional': Decimal(filt['filters'][2]['minNotional']),
+                'min_order_size': Decimal(filt['filters'][2]['minQty']),
+                'max_order_size': Decimal(filt['filters'][2]['maxQty']),
+                'order_step': Decimal(filt['filters'][2]['stepSize']),
+                'min_notional': Decimal(filt['filters'][3]['minNotional']),
                 'min_price': Decimal(filt['filters'][0]['minPrice']),
                 'max_price': Decimal(filt['filters'][0]['maxPrice']),
                 'price_step': Decimal(filt['filters'][0]['tickSize']),
                 'base': filt['quoteAsset'],
                 'commodity': filt['baseAsset'],
             }
-            for filt in filters if 'minQty' in filt['filters'][1]
+            for filt in filters if 'minQty' in filt['filters'][2]
         }
 
     def get_mid_price_orderbooks(self, products=None):
