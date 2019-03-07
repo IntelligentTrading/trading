@@ -1,9 +1,49 @@
+## A) Fully local setup
+
 To setup and test service locally clone repository and make by command
 `make`
 
-After make is complete activate virtual environment `source .venv/.../activate`
+After make is complete activate virtual environment: `source .venv/.../activate`
 
-## Creating heroku app
+Before you can run the service, you need to do the following:
+1. Create a local Postgres database
+2. Edit `webserver/settings.py`, add the following:
+```
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': '<db_name>',
+        'USER': '<username>',
+        'PASSWORD': '<password>',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+```
+3. Set the `REDIS_URL` environment variable, or add the following line to `init_django.py`:
+`os.environ.setdefault("REDIS_URL", 'redis://localhost:6379/0')` (if running Redis locally)
+
+4. Set the `SECRET_KEY` environment variable or change the default to non-empty string in `webserver/settings.py`
+
+5. Make and run migrations (assuming you have activated the virtual env):
+```
+python manage.py makemigrations
+python manage.py migrate
+```
+
+6. Run `webserver/create_user.py`. This will give you an API key that you will use for API queries.
+
+7. Make sure Redis server is running locally (type `redis-server` in the terminal to start it).
+
+
+Once these steps are complete, run the following two processes:
+```
+python manage.py runserver
+celery worker -app=tasks.app
+```
+You can now query the API using your Binance keys and the user API key returned by create_user.py.
+
+## B) Creating heroku app
 
 If user is not authenticated on heroku use `heroku login`.\
 To create heroku app use `heroku create` command. 
