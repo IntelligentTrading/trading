@@ -14,8 +14,14 @@ def get_portfolio(exchange):
     price_estimates = get_price_estimates_from_orderbooks(orderbooks, 'BTC')
 
     weights = get_weights_from_resources(resources, price_estimates)
+
     portfolio_value = get_portfolio_value_from_resources(
-        resources, price_estimates).quantize(Decimal('1e-8'))
+        resources, price_estimates)
+
+    if portfolio_value == 0:
+        return {"value": portfolio_value, "allocations": []}
+
+    portfolio_value = portfolio_value.quantize(Decimal('1e-8'))
 
     allocations = []
     for currency, quantity in resources.items():
