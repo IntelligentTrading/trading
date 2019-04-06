@@ -24,7 +24,7 @@ def initialize_exchange(view_func):
             raise MustProvideSingleExchange
         [(exchange_name, info)] = data.items()
 
-        if exchange_name.upper() != 'BINANCE':
+        if exchange_name.upper() not in ('BINANCE', 'COINBASEPRO'):
             raise ExchangeNotSupported
 
         exchange_class = get_exchange_by_name(exchange_name)
