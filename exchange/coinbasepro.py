@@ -8,6 +8,8 @@ from internals.order import Order
 from internals.orderbook import OrderBook
 from internals.utils import quantize
 
+import time
+
 
 class CoinbasePro(Exchange):
     def __init__(self, api_key: str=None,
@@ -147,7 +149,9 @@ class CoinbasePro(Exchange):
         if not isinstance(self.client, AuthenticatedClient):
             raise Exception('Client not authenticated')
         if products is None:
-            products = [product['id'].replace('-', '_') for product in self.products]
+            owned = list(self.get_resources().keys())
+            products = [product['id'].replace('-', '_') for product in self.products
+                        if product['id'].split('-')[0] in owned]
         orderbooks = []
         for product in products:
             symbol = product.replace('_', '-')
@@ -159,4 +163,5 @@ class CoinbasePro(Exchange):
                                   {'bid': Decimal(raw_orderbook['bids'][0][0]),
                                    'ask': Decimal(raw_orderbook['asks'][0][0])})
             orderbooks.append(orderbook)
+            time.sleep(1.0/3)    # TODO figure out how to do this more efficiently
         return orderbooks
