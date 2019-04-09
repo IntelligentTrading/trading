@@ -144,12 +144,15 @@ class CoinbasePro(Exchange):
         return resp
 
     def get_orderbooks(self, products: List[str]=None, depth: int=1):
+        if not isinstance(self.client, AuthenticatedClient):
+            raise Exception('Client not authenticated')
         if products is None:
             products = [product['id'].replace('-', '_') for product in self.products]
         orderbooks = []
         for product in products:
             symbol = product.replace('_', '-')
             raw_orderbook = self.client.get_product_order_book(symbol)
+            logger.info(f'Parsing orderbook data: {str(raw_orderbook)} for symbol {str(symbol)} (client is {str(self.client)})')
             if len(raw_orderbook['bids']) == 0 or len(raw_orderbook['asks']) == 0:
                 continue
             orderbook = OrderBook(product,
