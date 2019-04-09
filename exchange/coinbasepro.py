@@ -25,8 +25,8 @@ class CoinbasePro(Exchange):
             'max_order_size': Decimal(product['base_max_size']),
             'order_step': Decimal('1e-8'),
             'price_step': Decimal(product['quote_increment']),
-            'base': product['quote'],
-            'commodity': product['base']
+            'base': product['quote_currency'],
+            'commodity': product['base_currency']
         } for product in self.products}
 
     def through_trade_currencies(self):
@@ -143,13 +143,17 @@ class CoinbasePro(Exchange):
         logger.info("get order response - {}".format(str(resp)))
         return resp
 
-    def get_orderbooks(self, products: List[str], depth: int=1):
+    def get_orderbooks(self, products: List[str]=None, depth: int=1):
+        if products is None:
+            products = [product['id'].replace('-', '_') for product in self.products]
         orderbooks = []
         for product in products:
             symbol = product.replace('_', '-')
             raw_orderbook = self.client.get_product_order_book(symbol)
+            if len(raw_orderbook['bids']) == 0 or len(raw_orderbook['asks']) == 0:
+                continue
             orderbook = OrderBook(product,
-                                  {'bid': raw_orderbook['bids'][0][0],
-                                   'ask': raw_orderbook['asks'][0][0]})
+                                  {'bid': Decimal(raw_orderbook['bids'][0][0]),
+                                   'ask': Decimal(raw_orderbook['asks'][0][0])})
             orderbooks.append(orderbook)
         return orderbooks

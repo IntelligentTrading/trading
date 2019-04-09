@@ -34,7 +34,14 @@ def initialize_exchange(view_func):
 
         api_key = info['api_key']
         api_secret = info['secret_key']
-        exchange = exchange_class(api_key, api_secret)
+
+        if exchange_name.upper() == 'COINBASEPRO':
+            passphrase = None
+            if 'passphrase' in info:
+                passphrase = info['passphrase']
+            exchange = exchange_class(api_key, api_secret, passphrase)
+        else:
+            exchange = exchange_class(api_key, api_secret)
         # NOTE, that `api_key` and `api_secret` are part of the info object and
         # if info object is logged user sensitive information will be stored
         # in the log, so take care when logging the info object.
