@@ -10,7 +10,7 @@ gunicorn==19.9.0
 dj-database-url==0.5
 psycopg2-binary==2.7.5
 jsonfield==2.0
-djangorestframework==3.8.2
+djangorestframework==3.9.1
 redis==2.10.6
 celery==4.2.1
 urllib3>=1.23
